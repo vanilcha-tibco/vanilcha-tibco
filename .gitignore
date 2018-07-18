@@ -1,0 +1,72 @@
+# See http://help.github.com/ignore-files/ for more about ignoring files.
+# App specific
+dist/server/
+dist/client/
+staging
+wi-plugins
+
+wi-studio.imi
+.idea
+*.swp
+logs
+node_modules
+jspm_packages
+**/npm-debug.log
+.vscode
+unit-test-results
+parser/node_modules/
+dist/api/
+build/docker/artifacts/package.json
+**/**/**/*debug.test
+
+# compiled output
+/dist
+/tmp
+/out-tsc
+
+# dependencies
+/node_modules
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# misc
+/.sass-cache
+/connect.lock
+/coverage
+/libpeerconnection.log
+npm-debug.log
+testem.log
+/typings
+
+# e2e
+/e2e/*.js
+/e2e/*.map
+
+# System Files
+.DS_Store
+Thumbs.db
+
+wi-studio
+staging/**
+
+contribution.zip
+
+src/app/github.com/*
+src/app/golang.org/*
+
+yarn.lock
+yarn-error.log

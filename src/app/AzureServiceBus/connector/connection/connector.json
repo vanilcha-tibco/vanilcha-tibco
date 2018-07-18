@@ -1,0 +1,88 @@
+{
+  "title": "Microsoft Azure ServiceBus Connector",
+  "name": "azservicebus-connection",
+  "author": "TIBCO Software Inc.",
+  "type": "flogo:connector",
+  "version": "1.0.0",
+  "display": {
+    "description": "Establish connection to your Azure ServiceBus account",
+    "category": "AzureServiceBus",
+    "visible": true
+  },
+  "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/AzureServiceBus/connector/connection",
+  "keyfield": "name",
+  "settings": [{
+      "name": "name",
+      "type": "string",
+      "required": true,
+      "display": {
+        "name": "Connection Name",
+        "visible": true
+      }
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "display": {
+        "name": "Description",
+        "visible": true
+      }
+    },
+    {
+      "name": "resourceURI",
+      "type": "string",
+      "required": true,
+      "display": {
+        "name": "Resource URI",
+        "visible": true
+      }
+    },
+    {
+      "name": "authorizationRuleName",
+      "type": "string",
+      "required": true,
+      "display": {
+        "name": "Authorization Rule Name",
+        "visible": true
+      }
+    },   
+    {
+      "name": "primarysecondaryKey",
+      "type": "string",
+      "required": true,
+      "display": {
+          "name": "Primary/Secondary Key",
+          "visible": true,
+          "type": "password"
+      }
+    },
+    {
+      "name": "expiryDate",
+      "type": "string",
+      "required": true,
+      "display": {
+        "name": "Expirty Time",
+        "visible": true
+      }
+    },
+    {
+      "name": "WI_STUDIO_OAUTH_CONNECTOR_INFO",
+      "type": "string",
+      "required": true,
+      "display": {
+        "visible": false
+      }
+    },
+    {
+      "name": "configProperties",
+      "type": "string",
+      "required": true,
+      "display": {
+        "visible": false
+      }
+    }
+  ],
+  "actions": [{
+    "name": "Login"
+  }]
+}

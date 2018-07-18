@@ -1,0 +1,84 @@
+{
+  "name": "AzureServiceBus",
+  "contributions": {
+    "function (str) {\n  if (0 === arguments.length) return this._name;\n  this._name = str;\n  return this;\n}": {
+      "type": "activity",
+      "imports": [{
+          "@angular/common": [
+            "CommonModule"
+          ]
+        },
+        {
+          "@angular/http": [
+            "HttpModule"
+          ]
+        }
+      ],
+      "services": []
+    },
+    "query": {
+      "name": "azureServiceBus-query",
+      "type": "activity",
+      "imports": [{
+          "@angular/common": [
+            "CommonModule"
+          ]
+        },
+        {
+          "@angular/http": [
+            "HttpModule"
+          ]
+        }
+      ],
+      "services": []
+    },
+    "upsert": {
+      "name": "azureServiceBus-upsert",
+      "type": "activity",
+      "imports": [{
+          "@angular/common": [
+            "CommonModule"
+          ]
+        },
+        {
+          "@angular/http": [
+            "HttpModule"
+          ]
+        }
+      ],
+      "services": []
+    },    
+    "delete": {
+      "name": "azureServiceBus-delete",
+      "type": "activity",
+      "imports": [{
+          "@angular/common": [
+            "CommonModule"
+          ]
+        },
+        {
+          "@angular/http": [
+            "HttpModule"
+          ]
+        }
+      ],
+      "services": []
+    },
+    "connection": {
+      "name": "azureServiceBus-connector",
+      "type": "connector",
+      "imports": [{
+          "@angular/common": [
+            "CommonModule"
+          ]
+        },
+        {
+          "@angular/http": [
+            "HttpModule"
+          ]
+        }
+      ],
+      "services": []
+    }
+  }
+}
