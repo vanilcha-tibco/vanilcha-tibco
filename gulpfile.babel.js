@@ -29,7 +29,7 @@ function onError(error) {
 }
 
 gulp.task("clean", callback => {
-  return del(["staging"], {
+  return del(["dist"], {
     force: true
   }, callback)
 });
@@ -52,7 +52,7 @@ gulp.task("copy-resources", function () {
       "scripts/tci-deployer.sh",
       "scripts/properties.sh"
     ])
-    .pipe(gulp.dest("staging/AzureServiceBus"));
+    .pipe(gulp.dest("dist/AzureServiceBus"));
 });
 
 // Compile TypeScript to JS
@@ -65,7 +65,7 @@ gulp.task('compile:ts', callback => {
     .pipe(sourcemaps.init())
     .pipe(tsProject(ts.reporter.fullReporter(true)))
     .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest('staging/AzureServiceBus'));
+    .pipe(gulp.dest('dist/AzureServiceBus'));
 });
 
 // Compile TypeScript to JS
@@ -90,11 +90,11 @@ gulp.task('compile:ts:prod', callback => {
       }
     })))
     .pipe(sourcemaps.write('.'))
-    .pipe(gulp.dest('staging/AzureServiceBus'));
+    .pipe(gulp.dest('dist/AzureServiceBus'));
 });
 
 gulp.task("zip:contrib", callback => {
-  return gulp.src('staging/**/*')
+  return gulp.src('dist/**/*')
     .pipe(zip('contribution.zip'))
     .pipe(gulp.dest('.'))
 

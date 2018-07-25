@@ -62,10 +62,11 @@ func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 	if inputData == nil || inputData == "{}" {
 		return false, activity.NewError(fmt.Sprintf("Input is required in publish activity for %s object", entityName), "AZSERVICEBUS-PUBLISH-4015", nil)
 	}
-	inputMap := inputData.(map[string]interface{})
-	body := inputMap["body"]
-	if body == nil {
-		return false, activity.NewError(fmt.Sprintf("Body is required in publish activity for %s object", entityName), "AZSERVICEBUS-PUBLISH-4013", nil)
+	inputMap := make(map[string]string)
+	if inputData != "{}" {
+		for k, v := range inputData.(map[string]interface{}) {
+			inputMap[k] = fmt.Sprint(v)
+		}
 	}
 
 	methodName := http.MethodPost
@@ -75,9 +76,7 @@ func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 		return false, activity.NewError(fmt.Sprintf("Failed to perform Azure Service Bus publish message for %s, %s", entityName, err.Error()), "AZSERVICEBUS-PUBLISH-4014", nil)
 	}
 
-	objectResponse := make(map[string]interface{})
-	objectResponse[entityName] = responseData
-	outputComplex := &data.ComplexObject{Metadata: "", Value: objectResponse}
+	outputComplex := &data.ComplexObject{Metadata: "", Value: responseData}
 	context.SetOutput("output", outputComplex)
 	return true, nil
 

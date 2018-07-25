@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"reflect"
+	"strconv"
+	"strings"
 
 	"github.com/TIBCOSoftware/flogo-lib/logger"
 )
@@ -30,8 +32,39 @@ type (
 		tokenURL                       string
 	}
 )
+type (
+	PublishRequest struct {
+		QueueName        string           `json:"queueName"`
+		TopicName        string           `json:"topicName"`
+		MessageString    string           `json:"messageString"`
+		BrokerProperties BrokerProperties `json:"brokerProperties"`
+	}
+)
+type (
+	//BrokerProperties datastructure for storing BrokerProperties
+	BrokerProperties struct {
+		ContentType            string `json:"ContentType"`
+		CorrelationId          string `json:"CorrelationId"`
+		EnqueuedSequenceNumber int64  `json:"EnqueuedSequenceNumber"`
+		ForcePersistence       bool   `json:"ForcePersistence"`
+		Label                  string `json:"Label"`
+		MessageId              string `json:"MessageId"`
+		PartitionKey           string `json:"PartitionKey"`
+		ReplyTo                string `json:"ReplyTo"`
+		ReplyToSessionId       string `json:"ReplyToSessionId"`
+		SessionId              string `json:"SessionId"`
+		To                     string `json:"To"`
+		ViaPartitionKey        string `json:"ViaPartitionKey"`
+	}
+)
 
-var log = logger.GetLogger("zoho-crm")
+//PublishResponse datastructure for storing BrokerProperties
+type PublishResponse struct {
+	ResponseMessage string `json:"responseMessage"`
+	ResponseCode    string `json:"responseCode"`
+}
+
+var log = logger.GetLogger("az-servicebus")
 
 var cachedConnection map[string]*Connection
 
@@ -62,37 +95,25 @@ func GetConnection(connector interface{}) (connection *Connection, err error) {
 
 func (connection *Connection) read(settings interface{}) (err error) {
 
-	connectionRef := reflect.ValueOf(connection).Elem()
-
+	//connectionRef := reflect.ValueOf(connection).Elem()
 	//TBD process other types later, right now only strings
 	for _, value := range settings.([]interface{}) {
 		element := value.(map[string]interface{})
-		field := connectionRef.FieldByName(element["name"].(string))
-		fieldValue := element["value"].(string)
-		field.SetString(fieldValue)
-	}
+		if element["name"] == "resourceURI" {
+			//resourceURI := connectionRef.FieldByName(element["name"].(string))
+			connection.baseURL = element["value"].(string)
 
-	if connection.docsObject == nil {
-		var docsMetadata interface{}
-		err = json.Unmarshal([]byte(connection.DocsMetadata), &docsMetadata)
+			//resourceURI.SetString(fieldValue)
+		} else if element["name"] == "WI_STUDIO_OAUTH_CONNECTOR_INFO" {
+			conInfo := element["value"].(string)
+			conInfoMap := make(map[string]interface{})
+			err := json.Unmarshal([]byte(conInfo), &conInfoMap)
+			if err != nil {
+				log.Error(err)
+			}
+			connection.accessToken = fmt.Sprint(conInfoMap["access_token"])
 
-		if err != nil {
-			return fmt.Errorf("Cannot deserialize schema document from connection")
 		}
-		connection.docsObject = docsMetadata.(map[string]interface{})
-		connection.baseURL = connection.docsObject["baseURL"].(string)
-		connection.tokenURL = "https://accounts.zoho.com/oauth/v2/token" //TBD in docsMetadata
-	}
-
-	if connection.accessToken == "" && connection.refreshToken == "" {
-		var oAuthInfo map[string]interface{}
-		err = json.Unmarshal([]byte(connection.WI_STUDIO_OAUTH_CONNECTOR_INFO), &oAuthInfo)
-
-		if err != nil {
-			return fmt.Errorf("Cannot deserialize connections OAuth Info")
-		}
-		connection.accessToken = oAuthInfo["access_token"].(string)
-		connection.refreshToken = oAuthInfo["refresh_token"].(string)
 	}
 
 	return
@@ -101,32 +122,63 @@ func (connection *Connection) read(settings interface{}) (err error) {
 // doCall is a private implementation helper for making HTTP calls into the Zoho System
 func (connection *Connection) doCall(objectName string, inputData interface{}, methodName string) (response *http.Response, err error) {
 	log.Info("Invoking Azure ServiceBus backend")
-
-	queryParams := url.Values{}
-	var requestBody io.Reader
-	if inputData != nil && inputData != "{}" {
-
-		inputMap := inputData.(map[string]interface{})
-
-		body := inputMap["body"]
-		if body != nil {
-			requestBody, _ = getBody(body)
+	queryURL := ""
+	inputMap := make(map[string]string)
+	if inputData != "{}" {
+		for k, v := range inputData.(map[string]interface{}) {
+			inputMap[k] = fmt.Sprint(v)
 		}
-
+	}
+	if objectName == "Queue" {
+		queryURL = connection.baseURL + "/" + inputMap["queueName"] + "/messages"
+	} else {
+		queryURL = connection.baseURL + "/" + inputMap["topicName"] + "/messages"
+	}
+	log.Info(fmt.Sprintf("%v", inputMap["messageString"]))
+	log.Info(queryURL)
+	req, err := http.NewRequest(methodName, queryURL, bytes.NewBuffer([]byte(inputMap["messageString"])))
+	dataBytes, err := json.Marshal(inputData)
+	if err != nil {
+		log.Error(err)
 	}
 
-	queryURL := connection.baseURL
-
-	req, err := http.NewRequest(methodName, queryURL, requestBody)
-	req.Header.Add("Content-Type", "application/atom+xml")
+	publishInput := PublishRequest{}
+	json.Unmarshal(dataBytes, &publishInput)
+	req.Header.Add("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
 	req.Header.Add("Authorization", connection.accessToken)
+	variable := fmt.Sprintf("%v", publishInput.BrokerProperties)
+	log.Debug(variable)
+	var bufferRecep bytes.Buffer
+	typeOft := reflect.ValueOf(&publishInput.BrokerProperties).Elem().Type()
+	v := reflect.ValueOf(publishInput.BrokerProperties)
+	values := make([]interface{}, v.NumField())
+	bufferRecep.WriteString("{")
+	for i := 0; i < v.NumField(); i++ {
+		values[i] = v.Field(i).Interface()
+		if fmt.Sprintf("%v", values[i]) != "" {
+			bufferRecep.WriteString("\"" + typeOft.Field(i).Name + "\":")
 
-	req.URL.RawQuery = queryParams.Encode()
+			bufferRecep.WriteString("\"" + fmt.Sprintf("%v", values[i]) + "\"")
 
+			if i+1 != v.NumField() {
+				bufferRecep.WriteString(",")
+			} else {
+				bufferRecep.WriteString("}")
+			}
+		}
+	}
+	if bufferRecep.String() != "" {
+		req.Header.Add("BrokerProperties", bufferRecep.String())
+	}
 	log.Debug("Deserialized input mapping data... making http call")
 	client := &http.Client{}
 	response, err = client.Do(req)
 	log.Debugf("Status is %v\n", response.Status)
+	if response.Status == "201" {
+
+	}
+	jsonResponseData, err := ioutil.ReadAll(response.Body)
+	log.Info(string(jsonResponseData))
 	if err != nil {
 		return nil, fmt.Errorf("http invocation failed %s, status code %v", err.Error(), response.StatusCode)
 	}
@@ -144,35 +196,37 @@ func (connection *Connection) Call(objectName string, inputData interface{}, met
 		if err != nil {
 			return nil, fmt.Errorf("backend invocation error: %s", err.Error())
 		}
-
-		switch {
-		case response.StatusCode == 401:
-			log.Debug("Access token expired. Renewing ...")
-			err = connection.refreshAccessToken()
-			if err != nil {
-				return nil, fmt.Errorf("access token renewal failed: %s ", err.Error())
-			}
-		case response.StatusCode > 401:
+		if strings.HasPrefix(strconv.Itoa(response.StatusCode), "4") || strings.HasPrefix(strconv.Itoa(response.StatusCode), "5") {
 			return nil, fmt.Errorf("invocation failed: %s, %v", response.Status, response.StatusCode)
-		default:
+		} else if strings.HasPrefix(strconv.Itoa(response.StatusCode), "2") {
+			actulaResponse := PublishResponse{}
+			res2B, _ := json.Marshal(actulaResponse)
+			fmt.Println(string(res2B))
 			jsonResponse := []byte("")
-			if response.Body != nil {
-				jsonResponse, err = ioutil.ReadAll(response.Body)
-			} else {
-				jsonResponse = []byte(response.Status)
-			}
+			jsonResponse, err = ioutil.ReadAll(response.Body)
+			actulaResponse.ResponseMessage = string(jsonResponse)
+			jsonResponse = []byte(response.Status)
+			actulaResponse.ResponseMessage += "/ " + string(jsonResponse)
+			jsonResponse = []byte(strconv.Itoa(response.StatusCode))
+			actulaResponse.ResponseCode = string(jsonResponse)
+
 			if err != nil {
 				return nil, fmt.Errorf("response reading error %s", err.Error())
 			}
+			databytes, _ := json.Marshal(actulaResponse)
+			s := string(databytes)
+			log.Info(s)
 
 			responseData = make(map[string]interface{})
-			err = json.Unmarshal(jsonResponse, &responseData)
+			err = json.Unmarshal(databytes, &responseData)
+			log.Info(responseData)
 			if err != nil && response.StatusCode != 204 {
 				return nil, fmt.Errorf("cannot unmarshall response %s", err.Error())
 			}
-			return responseData, nil
 		}
+		return responseData, nil
 	}
+
 	return nil, fmt.Errorf("all invocation attempts exhausted")
 }
 

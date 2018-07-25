@@ -11,7 +11,20 @@ export namespace JsonSchema {
                         "properties": {
                             "queueName": { "type": "string" },
                             "messageString": {"type": "string"},
-                            "brokerProperties": {"type": "object", "properties": {} }
+                            "brokerProperties": {"type": "object", "properties": {
+                                "ContentType": { "type" : "string"},
+                                "CorrelationId": {"type" : "string"},
+                                "EnqueuedSequenceNumber": { "type" : "long"},
+                                "ForcePersistence": {"type": "bool"},
+                                "Label": {"type" : "string"},
+                                "MessageId": {"type" : "string"},
+                                "PartitionKey": {"type" : "string"},
+                                "ReplyTo": {"type" : "string"},
+                                "ReplyToSessionId": {"type" : "string"},
+                                "SessionId": {"type" : "string"},
+                                "To": {"type" : "string"},
+                                "ViaPartitionKey": {"type" : "string"}
+                            }  }
                         },
                         "required": [
                             "queueName",

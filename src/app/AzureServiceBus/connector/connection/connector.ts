@@ -3,7 +3,7 @@
  * This file is subject to the license terms contained
  * in the license file that is distributed with this file.
  */
-import { Http, Response, URLSearchParams, Headers, RequestOptions } from '@angular/http';
+import { Http, Response, URLSearchParams, Headers, RequestOptions, Jsonp } from '@angular/http';
 
 import { Inject, Injectable, Injector } from '@angular/core';
 import {
@@ -18,6 +18,7 @@ import 'wi-studio/common/rxjs-extensions';
 import { IValidationResult, ValidationResult, ValidationError } from 'wi-studio/common/models/validation';
 import 'rxjs/add/observable/zip';
 import * as cryptos from "crypto-js";
+import { jsonpFactory } from '@angular/http/src/http_module';
 
 
 class Result {
@@ -32,12 +33,14 @@ export class Connection {
     public name: string;
     public description: string;
     public WI_STUDIO_OAUTH_CONNECTOR_INFO: string;
+    public sasFlag: string;
     public resourceURI: string;
     public authorizationRuleName: string;
     public primarysecondaryKey: string;
     public startDate: string;
     public expiryDate: string;
     public configProperties: string;
+    public sasToken: string;
   //  private REDIRECT_URI:   Observable<any> = WiContributionUtils.getEnvironment(this.http, 'OAUTH_REDIRECT_URL');
   //  private SCOPE:          string = 'User.Read Files.ReadWrite.All Sites.ReadWrite.All';
     private RESPONSE_TYPE:  string = 'code';
@@ -89,24 +92,61 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
         if (!this.validations[(<any>context).title]) {
             this.validations[(<any>context).title] = {};
         }
-        if (fieldName === 'WI_STUDIO_OAUTH_CONNECTOR_INFO') {
-            let validation = this.validations[context.title][fieldName];
-            if (validation && validation.value) {
-                let validationValueAsJSON = JSON.parse(JSON.stringify(validation.value));
-                let validationValueErrors = validationValueAsJSON.errors[0];
-                let vresult = ValidationResult.newValidationResult().setVisible(false)
-                    .setError(validationValueErrors.errorCode, validationValueErrors.errorMsg)
-                    .setValid(false);
-                return Observable.of(vresult);
-            } else {
-                let vresult = ValidationResult.newValidationResult().setVisible(false)
-                    .setValid(true);
-                return Observable.of(vresult);
-
-            }
+        let i: number = 0;
+        let connsettings = context.settings;
+        let arrayObj = new Map();
+        let filedarray = context.settings;
+        for (i = 0; i < filedarray.length; i++) {
+            arrayObj.set(context.settings[i].name, context.settings[i].value);
         }
-        return null;
-    }
+                          switch (fieldName) {
+                        case "WI_STUDIO_OAUTH_CONNECTOR_INFO" :
+                            let validation = this.validations[context.title][fieldName];
+                            if (validation && validation.value) {
+                                let validationValueAsJSON = JSON.parse(JSON.stringify(validation.value));
+                                let validationValueErrors = validationValueAsJSON.errors[0];
+                                let vresult = ValidationResult.newValidationResult().setVisible(false)
+                                    .setError(validationValueErrors.errorCode, validationValueErrors.errorMsg)
+                                    .setValid(false);
+                                    return Observable.of(vresult);
+                            } else {
+                                let vresult = ValidationResult.newValidationResult().setVisible(false)
+                                    .setValid(true);
+                                    return Observable.of(vresult);
+                            }
+                            case "resourceURI":
+                            if (arrayObj.get("sasFlag") === "Generate SAS token") {
+                                return ValidationResult.newValidationResult().setVisible(true);
+                            }else {
+                                return ValidationResult.newValidationResult().setVisible(false);
+                            }
+                            case "authorizationRuleName":
+                            if (arrayObj.get("sasFlag") === "Generate SAS token") {
+                                return ValidationResult.newValidationResult().setVisible(true);
+                            }else {
+                                return ValidationResult.newValidationResult().setVisible(false);
+                            }
+                            case "primarysecondaryKey":
+                            if (arrayObj.get("sasFlag") === "Generate SAS token") {
+                                return ValidationResult.newValidationResult().setVisible(true);
+                            }else {
+                                return ValidationResult.newValidationResult().setVisible(false);
+                            }
+                            case "expiryDate":
+                            if (arrayObj.get("sasFlag") === "Generate SAS token") {
+                                return ValidationResult.newValidationResult().setVisible(true);
+                            }else {
+                                return ValidationResult.newValidationResult().setVisible(false);
+                            }
+                            case "sasToken":
+                            if (arrayObj.get("sasFlag") === "Generate SAS token") {
+                                return ValidationResult.newValidationResult().setVisible(false);
+                            }else {
+                                return ValidationResult.newValidationResult().setVisible(true);
+                            }
+                            return null;
+                        }
+                }
 
     connection = (input: ObservableInput<any>): Observable<Connection> => {
         let connection: Connection = new Connection(this.http);
@@ -147,6 +187,7 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
     }
 
     action = (actionName: string, context: IConnectorContribution): Observable<IActionResult> | IActionResult => {
+        let sharedaccesssignature;
         if (actionName === "Login") {
             return this.connection(context.settings)
                 .switchMap(con => this.isDuplicate(con, WiContributionUtils.getUniqueId(context))
@@ -157,6 +198,7 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                         return con;
                     }))
                 .switchMap(conData => {
+                    if (conData.sasFlag === "Generate SAS token") {
                     let stringToSign = "";
                     let resourceURL = "";
                     resourceURL = conData.resourceURI;
@@ -181,9 +223,16 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
         resourceURL = encodeURIComponent(resourceURL);
         console.log(resourceURL);
         console.log("sig:" + hashInBase64);
-        let sharedaccesssignature = "SharedAccessSignature sr=" + resourceURL + "&sig=" + hashInBase64 + "&se=" + conData.expiryDate + "&skn=" + conData.authorizationRuleName;
+        sharedaccesssignature = "SharedAccessSignature sr=" + resourceURL + "&sig=" + hashInBase64 + "&se=" + conData.expiryDate + "&skn=" + conData.authorizationRuleName;
+    }else if (conData.sasFlag === "Enter SAS token") {
+        if (conData.sasToken !== "") {
+            sharedaccesssignature = conData.sasToken;
+    }
+    }
         console.log(sharedaccesssignature);
-        let xml = "<entry xmlns=\"http://www.w3.org/2005/Atom\"><content type=\"application/xml\"><QueueDescription xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"http://schemas.microsoft.com/netservices/2010/10/servicebus/connect\"></QueueDescription></content></entry>";        return WiProxyCORSUtils.createRequest(this.http, conData.resourceURI + "/myfirsttestqueue")
+        let xml = "<entry xmlns=\"http://www.w3.org/2005/Atom\"><content type=\"application/xml\"><QueueDescription xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"http://schemas.microsoft.com/netservices/2010/10/servicebus/connect\"></QueueDescription></content></entry>";
+      //   return WiProxyCORSUtils.createRequest(this.http, conData.resourceURI + "/myfirsttestqueue")
+      return WiProxyCORSUtils.createRequest(this.http, conData.resourceURI )
         .addHeader("Accept", "application/atom+xml")
         .addHeader("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
         .addHeader("Authorization", sharedaccesssignature)
@@ -198,16 +247,15 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                         break;
                     }
 
-                    // WiProxyCORSUtils.createRequest(this.http, conData.resourceURI + "/myfirsttestqueue")
-                    // .addHeader("Accept", "application/atom+xml")
-                    // .addHeader("Content-Type", "application/atom+xml")
-                    // .addHeader("Authorization", sharedaccesssignature)
-                    // .addMethod("DELETE")
-                    // .send()
-                    // .catch(err => {
-                    // return Observable.of(ActionResult.newActionResult().setSuccess(true)
-                    // .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + err)));
-                    //  });
+                    WiProxyCORSUtils.createRequest(this.http, conData.resourceURI + "/myfirsttestqueue")
+                    .addHeader("Accept", "application/atom+xml")
+                    .addHeader("Content-Type", "application/atom+xml")
+                    .addHeader("Authorization", sharedaccesssignature)
+                    .addMethod("DELETE")
+                    .send()
+                    .catch(err => {
+                    return Observable.of(ActionResult.newActionResult().setSuccess(true));
+                     });
 
                 }
                 let actionResult = {
@@ -219,9 +267,25 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
             }
         });
                 })
-                .catch(err => {
+                .catch( (response: Response) => {
+                    if (response.status !== 401) {
+                        for (let i = 0; i < context.settings.length; i++) {
+                            if (context.settings[i].name === "WI_STUDIO_OAUTH_CONNECTOR_INFO") {
+                                context.settings[i].value = sharedaccesssignature;
+                                break;
+                            }
+                        }
+                        let actionResult = {
+                            context: context,
+                            authType: AUTHENTICATION_TYPE.BASIC,
+                            authData: {}
+                        };
+                        return Observable.of(ActionResult.newActionResult().setResult(actionResult));
+                    }
+                        else {
                     return Observable.of(ActionResult.newActionResult().setSuccess(false)
-                        .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + err)));
+                        .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText)));
+                    }
                 });
         }
     }

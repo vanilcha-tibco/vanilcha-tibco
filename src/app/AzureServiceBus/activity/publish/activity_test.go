@@ -10,10 +10,66 @@ import (
 	"github.com/TIBCOSoftware/flogo-contrib/action/flow/test"
 	"github.com/TIBCOSoftware/flogo-lib/core/activity"
 	"github.com/TIBCOSoftware/flogo-lib/core/data"
+	"github.com/TIBCOSoftware/flogo-lib/logger"
 	"github.com/stretchr/testify/assert"
 )
 
 var activityMetadata *activity.Metadata
+var serviceBusConnectionJSON = `{
+	"id": "09630510-6e30-11e8-aa07-f9c6f2436efe",
+	"title": "ServiceBus Connector",
+	"name": "tibco-office",
+	"author": "TIBCO Software Inc.",
+	"type": "flogo:connector",
+	"version": "1.0.0",
+	"display": {
+	  "description": "Operations on office",
+	  "category": "office",
+	  "visible": true
+	},
+	"ref": "git.tibco.com/git/product/ipaas/wi-office.git/office/connector/connection",
+	"keyfield": "name",
+	"settings": [{
+		"name": "name",
+		"type": "string",
+		"required": true,
+		"display": {
+		  "name": "Connection Name",
+		  "visible": true
+		}
+	  },
+	  {
+		"name": "description",
+		"type": "string",
+		"display": {
+		  "name": "Description",
+		  "visible": true
+		}
+	},
+	{
+		"name": "resourceURI",
+		"type": "string",
+		"required": true,
+		"display": {
+		  "name": "Resource URI",
+		  "visible": true
+		},
+		"value":"https://spaddindev.servicebus.windows.net"
+	  },
+	  {
+		"name": "WI_STUDIO_OAUTH_CONNECTOR_INFO",
+		"type": "string",
+		"required": true,
+		"display": {
+		  "visible": false
+		},
+		"value":"{\"token_type\":\"SharedAccessSignature\",\"access_token\":\"SharedAccessSignature sr=https%3A%2F%2Fspaddindev.servicebus.windows.net%2F&sig=VPxg11tdFNTQ3ZYhrZE3%2B%2Bmach%2Fw62OzM7vbDRsNxQY%3D&se=1532675283&skn=PluginServiceBus\"}"
+	  }
+	],
+	"actions": [{
+	  "name": "Login"
+	}]
+  }`
 
 func getConnector(t *testing.T, jsonConnection string) (map[string]interface{}, error) {
 	connector := make(map[string]interface{})
@@ -49,34 +105,23 @@ func getActivityMetadata() *activity.Metadata {
 	return activityMetadata
 }
 
-func TestCreateCampaign(t *testing.T) {
+func TestPublishMessage(t *testing.T) {
 
-	connectionBytes, err := ioutil.ReadFile("connectionFull.json")
-	if err != nil {
-		panic("connectionFull.json file found")
-	}
+	log.SetLogLevel(logger.DebugLevel)
+	log.Info("****TEST : Executing Create folder test for testing conflict behavior replace start****")
+	activity := NewActivity(getActivityMetadata())
+	tc := test.NewTestActivityContext(activity.Metadata())
 	var connection interface{}
-	err = json.Unmarshal(connectionBytes, &connection)
+	err := json.Unmarshal([]byte(serviceBusConnectionJSON), &connection)
 	if err != nil {
 		t.Errorf("Deserialization of connection failed %s", err.Error())
 		t.Fail()
 	}
 	cmap := connection.(map[string]interface{})
-	cname := cmap["connectorName"]
-
-	log.Debug("connection name is %s", cname)
-	connector := cmap["connector"]
-	settings := connector.(map[string]interface{})["settings"]
+	settings := cmap["settings"]
 	cmap["settings"] = settings
-
-	activityMetadata := getActivityMetadata()
-
-	activity := NewActivity(activityMetadata)
-	tc := test.NewTestActivityContext(activityMetadata)
-
-	tc.SetInput("zohoConnection", connection)
-	tc.SetInput("objectName", "campaign")
-	tc.SetInput("path", "/campaign/version/3/do/create")
+	tc.SetInput("Connection", cmap)
+	tc.SetInput("entityName", "Queue")
 
 	//	/api/campaign/version/3/do/read/id/<id>?...
 	//https://pi.zoho.com/api/login/version/3
@@ -84,15 +129,13 @@ func TestCreateCampaign(t *testing.T) {
 
 	var inputParams interface{}
 	var inputJSON = []byte(`{
-		"parameters": {
-			"name" : "Look for Water",
-			"cost": "20.00"
-		}
+		"queueName": "testqueue",
+		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>",
+		"brokerProperties":{"Label":"M1"}
 	}`)
 
 	err = json.Unmarshal(inputJSON, &inputParams)
 	assert.Nil(t, err)
-
 	complexInput := &data.ComplexObject{Metadata: "", Value: inputParams}
 	tc.SetInput("input", complexInput)
 
