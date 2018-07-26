@@ -144,7 +144,7 @@ function migrate {
 function tci::adjustGoPaths {
     
     replace='wi-azservicebus.git\/src\/app\/AzureServiceBus'
-    with='wi-azservicebus.git\/src\/app\/AzureServiceBuss'
+    with='wi-azservicebus.git\/src\/app\/AzureServiceBus'
     
     sources="$(find . \( -iname '*.go' \))"
     for file in ${sources}

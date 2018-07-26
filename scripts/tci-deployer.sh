@@ -16,7 +16,7 @@ TCI_DATA=${TCI_DATA:-${PWD}}
 FLOGO_ENTERPRISE=${FLOGO_ENTERPRISE:-'false'}
 FE_DEPLOYMENT=${FE_DEPLOYMENT:-'monolith'} 
 
-TCI_IMAGE_TAG='4863'    # will be substituted at build time
+TCI_IMAGE_TAG='5154'    # will be substituted at build time
 TCI_IMAGE_NAME='tci-deployer'  # will be substituted at build time
 TCI_IMAGE_URL=${TCI_IMAGE_URL:-"$SOURCE_REGISTRY/$TCI_IMAGE_NAME:$TCI_IMAGE_TAG"}
 TCI_CONTAINER_NAME=${TCI_CONTAINER_NAME:-"${TCI_DEPLOYMENT_NAME}${TCI_IMAGE_NAME}"}
@@ -52,6 +52,7 @@ docker run ${MODE} --rm \
   -e TCI_CLOUDOPS_USERNAME=${TCI_CLOUDOPS_USERNAME} \
   -e TCI_CLOUDOPS_PASSWORD=${TCI_CLOUDOPS_PASSWORD} \
   -e TCI_DEPLOYMENT_NAME=${TCI_DEPLOYMENT_NAME} \
+  -e TCI_DATA=${TCI_DATA} \
   -e TCI_CONTAINER_NAME=${TCI_CONTAINER_NAME} \
   --name $TCI_CONTAINER_NAME \
   $TCI_IMAGE_URL bash $BASHMODE -c "reconfigure() { source /opt/deployer/commands/reconfigure.bash; }; reconfigure && $CMD"
