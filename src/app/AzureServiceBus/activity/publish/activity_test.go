@@ -54,7 +54,7 @@ var serviceBusConnectionJSON = `{
 		  "name": "Resource URI",
 		  "visible": true
 		},
-		"value":"https://spaddindev.servicebus.windows.net"
+		"value":"spaddindev"
 	  },
 	  {
 		"name": "WI_STUDIO_OAUTH_CONNECTOR_INFO",
@@ -63,7 +63,7 @@ var serviceBusConnectionJSON = `{
 		"display": {
 		  "visible": false
 		},
-		"value":"{\"token_type\":\"SharedAccessSignature\",\"access_token\":\"SharedAccessSignature sr=https%3A%2F%2Fspaddindev.servicebus.windows.net%2F&sig=VPxg11tdFNTQ3ZYhrZE3%2B%2Bmach%2Fw62OzM7vbDRsNxQY%3D&se=1532675283&skn=PluginServiceBus\"}"
+		"value":"SharedAccessSignature sr=https%3A%2F%2Fspaddindev.servicebus.windows.net%2F&sig=0IDsg1DfqAGJ2Mt%2BlaHrM0U3%2FJkRgENiwTEVCT31Q4Y%3D&se=1533117702&skn=PluginServiceBus"
 	  }
 	],
 	"actions": [{
@@ -105,7 +105,7 @@ func getActivityMetadata() *activity.Metadata {
 	return activityMetadata
 }
 
-func TestPublishMessage(t *testing.T) {
+func TestPublishMessagetoQueue(t *testing.T) {
 
 	log.SetLogLevel(logger.DebugLevel)
 	log.Info("****TEST : Executing Create folder test for testing conflict behavior replace start****")
@@ -121,6 +121,7 @@ func TestPublishMessage(t *testing.T) {
 	settings := cmap["settings"]
 	cmap["settings"] = settings
 	tc.SetInput("Connection", cmap)
+	tc.SetInput("entityType", "Queue")
 	tc.SetInput("entityName", "Queue")
 
 	//	/api/campaign/version/3/do/read/id/<id>?...
@@ -130,9 +131,62 @@ func TestPublishMessage(t *testing.T) {
 	var inputParams interface{}
 	var inputJSON = []byte(`{
 		"queueName": "testqueue",
-		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>",
-		"brokerProperties":{"Label":"M1"}
+		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>"		
 	}`)
+
+	err = json.Unmarshal(inputJSON, &inputParams)
+	assert.Nil(t, err)
+	complexInput := &data.ComplexObject{Metadata: "", Value: inputParams}
+	tc.SetInput("input", complexInput)
+
+	_, err = activity.Eval(tc)
+	assert.Nil(t, err)
+	if err != nil {
+		t.Errorf("Could not fetch campaign by id, %s", err.Error())
+		fmt.Printf("Error: %s", err.Error())
+		t.Fail()
+	} else {
+		complexOutput := tc.GetOutput("output")
+		assert.NotNil(t, complexOutput)
+		outputData := complexOutput.(*data.ComplexObject).Value
+		dataBytes, err := json.Marshal(outputData)
+
+		jsonString := string(dataBytes)
+		t.Logf("%s", jsonString)
+		fmt.Println(jsonString)
+		assert.Nil(t, err)
+		assert.NotNil(t, dataBytes)
+	}
+}
+func TestPublishMessagetoTopic(t *testing.T) {
+
+	log.SetLogLevel(logger.DebugLevel)
+	log.Info("****TEST : Executing Create folder test for testing conflict behavior replace start****")
+	activity := NewActivity(getActivityMetadata())
+	tc := test.NewTestActivityContext(activity.Metadata())
+	var connection interface{}
+	err := json.Unmarshal([]byte(serviceBusConnectionJSON), &connection)
+	if err != nil {
+		t.Errorf("Deserialization of connection failed %s", err.Error())
+		t.Fail()
+	}
+	cmap := connection.(map[string]interface{})
+	settings := cmap["settings"]
+	cmap["settings"] = settings
+	tc.SetInput("Connection", cmap)
+	tc.SetInput("entityName", "myfirsttopic")
+	tc.SetInput("entityType", "Topic")
+
+	//	/api/campaign/version/3/do/read/id/<id>?...
+	//https://pi.zoho.com/api/login/version/3
+	// queryURL := connection.baseURL + "/" + objectName + "/version/3/do/read/{id}"
+
+	var inputParams interface{}
+	var inputJSON = []byte(`{"parameters" :{
+			"topicName": "",
+			"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>"
+			}			
+		}`)
 
 	err = json.Unmarshal(inputJSON, &inputParams)
 	assert.Nil(t, err)

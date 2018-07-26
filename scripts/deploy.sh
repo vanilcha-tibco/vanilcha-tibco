@@ -15,7 +15,7 @@ function contrib::stage {
     
     sources="src/app/AzureServiceBus/connector
     src/app/AzureServiceBus/activity
-    src/app/AzureServiceBus/zoho.go
+    src/app/AzureServiceBus/azservicebus.go
     scripts/tci-deployer.sh
     scripts/properties.sh
     src/app/AzureServiceBus/contribution.json"
@@ -36,7 +36,7 @@ function tci::stage {
     mkdir -p ${tempdir}/connector/AzureServiceBus
     
     cp -r src/app/AzureServiceBus/activity/* ${tempdir}/activity/AzureServiceBus
-    cp src/app/AzureServiceBus/zoho.go ${tempdir}/activity/AzureServiceBus
+    cp src/app/AzureServiceBus/azservicebus.go ${tempdir}/activity/AzureServiceBus
     cp -r src/app/AzureServiceBus/connector/connection/* ${tempdir}/connector/AzureServiceBus
 }
 
@@ -143,8 +143,8 @@ function migrate {
 
 function tci::adjustGoPaths {
     
-    replace='wi-zoho.git\/src\/app\/AzureServiceBus'
-    with='wi-zoho.git\/activity\/AzureServiceBus'
+    replace='wi-azservicebus.git\/src\/app\/AzureServiceBus'
+    with='wi-azservicebus.git\/src\/app\/AzureServiceBuss'
     
     sources="$(find . \( -iname '*.go' \))"
     for file in ${sources}
@@ -163,8 +163,8 @@ function tci::adjustGoPaths {
 
 function contrib::adjustGoPaths {
     
-    replace='wi-zoho.git\/src\/app\/AzureServiceBus'
-    with='wi-zoho.git\/AzureServiceBus'
+    replace='wi-azservicebus.git\/src\/app\/AzureServiceBus'
+    with='wi-azservicebus.git\/src\/app\/AzureServiceBus'
     
     sources="$(find . \( -iname '*.go' \))"
     for file in ${sources}

@@ -9,7 +9,7 @@
     "category": "AzureServiceBus",
     "visible": true
   },
-  "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/AzureServiceBus/connector/connection",
+  "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection",
   "keyfield": "name",
   "settings": [{
       "name": "name",
@@ -50,7 +50,8 @@
       "type": "string",
       "required": true,
       "display": {
-        "name": "Resource URI",
+        "name": "Service Bus Namespace",
+        "description": "Provide the Namespace name without prefix .servicebus.windows.net",
         "visible": true
       }
     },
@@ -101,6 +102,14 @@
     },
     {
       "name": "configProperties",
+      "type": "string",
+      "required": true,
+      "display": {
+        "visible": false
+      }
+    },
+    {
+      "name": "DocsMetadata",
       "type": "string",
       "required": true,
       "display": {

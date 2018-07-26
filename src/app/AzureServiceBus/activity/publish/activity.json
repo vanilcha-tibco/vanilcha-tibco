@@ -11,7 +11,7 @@
     "smallIcon": "icons/ic-sfpardot-query@2x.png",
     "largeIcon": "icons/ic-sfpardot-query@3x.png"
   },
-  "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/AzureServiceBus/activity/publish",
+  "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/activity/publish",
   "inputs": [{
       "name": "Connection",
       "type": "object",
@@ -25,18 +25,28 @@
       "allowed": []
     },
     {
-      "name": "entityName",
+      "name": "entityType",
       "type": "string",
       "required": true,
-      "allowed": [],
+      "allowed": [ "Queue","Topic"],
       "display": {
-        "name": "Object",
-        "description": "AzureServiceBus entity name to publish message",
+        "name": "Entity Type",
+        "description": "AzureServiceBus entity type to publish message",
         "type": "dropdown",
         "selection": "single",
         "visible": true
-      }
+      }      
     },   
+    {
+      "name": "entityName",
+      "type": "string",
+      "required": true,      
+      "display": {
+        "name": "Entity Name",
+        "description": "AzureServiceBus entity name to publish message",       
+        "visible": true
+      }
+    },
     {
       "name": "input",
       "type": "complex_object"

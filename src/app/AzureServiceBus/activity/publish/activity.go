@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus"
+	azservicebus "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus"
 	"github.com/TIBCOSoftware/flogo-lib/core/activity"
 	"github.com/TIBCOSoftware/flogo-lib/core/data"
 	"github.com/TIBCOSoftware/flogo-lib/logger"
@@ -38,7 +38,8 @@ func GetComplexValue(complexObject *data.ComplexObject) interface{} {
 // Eval implements activity.Activity.Eval
 func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 	log.Info("AzureServiceBus publish message Activity")
-
+	log.Info("AzureServiceBus publish message Activity")
+	log.Info(context.GetInput("Connection"))
 	connector := context.GetInput("Connection")
 	if connector == nil {
 		return false, fmt.Errorf("AzureServiceBus connection not configured")
@@ -55,23 +56,17 @@ func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 	if oName == nil || oName.(string) == "" {
 		return false, activity.NewError("AzureServiceBus entity name is not configured", "AZSERVICEBUS-PUBLISH-4002", nil)
 	}
+	entityType := context.GetInput("entityType").(string)
+	log.Debugf("entityName is %s", entityType)
 	entityName := oName.(string)
-	log.Debugf("entityName is %s", entityName)
-
 	inputData := GetComplexValue(context.GetInput("input").(*data.ComplexObject))
 	if inputData == nil || inputData == "{}" {
 		return false, activity.NewError(fmt.Sprintf("Input is required in publish activity for %s object", entityName), "AZSERVICEBUS-PUBLISH-4015", nil)
 	}
-	inputMap := make(map[string]string)
-	if inputData != "{}" {
-		for k, v := range inputData.(map[string]interface{}) {
-			inputMap[k] = fmt.Sprint(v)
-		}
-	}
 
 	methodName := http.MethodPost
 
-	responseData, err := connection.Call(entityName, inputData, methodName)
+	responseData, err := connection.Call(entityType, entityName, inputData, methodName)
 	if err != nil {
 		return false, activity.NewError(fmt.Sprintf("Failed to perform Azure Service Bus publish message for %s, %s", entityName, err.Error()), "AZSERVICEBUS-PUBLISH-4014", nil)
 	}

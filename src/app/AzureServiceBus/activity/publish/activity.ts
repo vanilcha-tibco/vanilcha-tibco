@@ -16,6 +16,7 @@ import {
 import { WiInternalProxyCORSUtils } from "wi-studio/app/contrib/wi-contrib-internal";
 import { IMessaging } from 'wi-studio/common/models/messaging';
 import { JsonSchema } from "./activity.jsonschema";
+import { Connection } from './common';
 
 
 @Injectable()
@@ -39,8 +40,8 @@ export class AzServiceBusPublishActivityContribution extends WiServiceHandlerCon
     value = (fieldName: string, context: IActivityContribution): Observable<any> | any => {
         let connectionField: IFieldDefinition = context.getField("Connection");
         let connectionName = connectionField.value ? connectionField.value : '';
-        let entityNameField: IFieldDefinition = context.getField("entityName");
-        let entityName = entityNameField.value ? entityNameField.value : '';
+        let entityNameField: IFieldDefinition = context.getField("entityType");
+        let entityType = entityNameField.value ? entityNameField.value : '';
 
 
         if (this.validations[context.title] && this.validations[context.title][fieldName]) {
@@ -73,40 +74,74 @@ export class AzServiceBusPublishActivityContribution extends WiServiceHandlerCon
                 });
             });
         }
-        case "entityName" : {
+        case "entityType" : {
             if (connectionName !== '') {
-                return Observable.create(observer => {
-                    {
-                        let operationNames: string[];
-                            operationNames = ["Queue", "Topic"];
-                            observer.next(operationNames);
-                        }
-                    }
-                    );
+                return WiContributionUtils.getConnection(this.http, connectionName)
+                    .switchMap(connector => Connection.getConnection(connector))
+                    .switchMap(connection => connection.getEntityTypes());
                 }
             }
         case "input" : {
-            if (connectionName !== '' && entityName !== '' ) {
-            let entityname: IFieldDefinition = context.getField("entityName");
-            if (entityname.value) {
-                return Observable.create(observer => {
-                    observer.next(JSON.stringify(JsonSchema.Types.getInputObject(entityname.value)));
+            if (connectionName !== '' && entityType !== '' ) {
+                return WiContributionUtils.getConnection(this.http, connectionName)
+                .switchMap(connector => Connection.getConnection(connector))
+                .switchMap(connection => connection.getSchemaForPublish(entityType, this.method))
+                .map(schema => {
+                    if (!schema.parameters || !schema.output) {
+                        throw new Error("No body or output schema retrieved for method " + this.method);
+                    }
+                    this.messaging.emit<any>(context.title + connectionName + 'output', schema.output);
+                    this.messaging.emit<any>(context.title + connectionName + 'path', schema.path);
+
+                    return JSON.stringify({
+                        $schema: "http://json-schema.org/draft-04/schema#",
+                        type: "object",
+                        definitions: {},
+                        properties: {
+                            parameters: schema.parameters
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.log("Error occurred fetching input metadata: " + err);
+                    this.validations[context.title][fieldName] = Observable.of(ValidationResult
+                        .newValidationResult().setError("SFP-QRY-MSG-1000", err));
+                    return Observable.of("");
                 });
-            }
+                // return Observable.create(observer => {
+                //     observer.next(JSON.stringify(JsonSchema.Types.getInputObject(entityType)));
+                // });
+
             }
         }
         case "output" :  {
-            if (connectionName !== '' && entityName !== '') {
+            if (connectionName !== '' && entityType !== '') {
                 return Observable.create(observer => {
-                    let examplesSchema;
-                    if (entityName === "Queue") {
-                        examplesSchema = JsonSchema.Types.getOutputObject(entityName);
-                    }
-                    else if (entityName === "Topic") {
-                        examplesSchema = JsonSchema.Types.getOutputObject(entityName);
-                    }
-                    observer.next(JSON.stringify(examplesSchema));
-        });
+                    this.messaging.on<any>(context.title + connectionName + 'output', data => {
+                        if (data != null) {
+                            this.messaging.off(context.title + connectionName + 'output');
+                            observer.next(data);
+                        }
+                    });
+                })
+                    .map(outputSchema => {
+                        return JSON.stringify({
+                            $schema: "http://json-schema.org/draft-04/schema#",
+                            type: "object",
+                            definitions: {},
+                            properties: outputSchema.properties
+                        });
+                    });
+                // return Observable.create(observer => {
+                //     let examplesSchema;
+                //     if (entityType === "Queue") {
+                //         examplesSchema = JsonSchema.Types.getOutputObject(entityType);
+                //     }
+                //     else if (entityType === "Topic") {
+                //         examplesSchema = JsonSchema.Types.getOutputObject(entityType);
+                //     }
+                //     observer.next(JSON.stringify(examplesSchema));
+       // });
             }
         }
         return null;

@@ -19,7 +19,7 @@ import { IValidationResult, ValidationResult, ValidationError } from 'wi-studio/
 import 'rxjs/add/observable/zip';
 import * as cryptos from "crypto-js";
 import { jsonpFactory } from '@angular/http/src/http_module';
-
+import { JsonSchema } from './schemadoc';
 
 class Result {
     constructor(
@@ -58,7 +58,14 @@ export class Connection {
                 return acc;
             }, connection);
     }
-
+    oAuthProperties = (): Observable<any> => Observable.zip(
+        Observable.of(this.authorizationRuleName),
+        Observable.of(this.primarysecondaryKey),
+        (authorizationRuleName: string, primarysecondaryKey: string) =>
+            ({
+                authorizationRuleName, primarysecondaryKey
+            })
+    )
       authorizationNeeded = (): boolean => {
         let authInfo = this.WI_STUDIO_OAUTH_CONNECTOR_INFO && this.WI_STUDIO_OAUTH_CONNECTOR_INFO !== "" ? JSON.parse(this.WI_STUDIO_OAUTH_CONNECTOR_INFO) : {};
         let cProperties = this.configProperties && this.configProperties !== "" ? JSON.parse(this.configProperties) : { authorizationRuleName: "", primarysecondaryKey: "" };
@@ -76,7 +83,7 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
     private validations:    any;
     private messaging:      IMessaging;
     private clientSecretField = "clientSecret";
-
+    private NO_CHANGE = null;
     constructor(@Inject(Injector) injector, private http: Http) {
         super(injector, http);
         this.validations = {};
@@ -85,6 +92,27 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
     }
 
     value = (fieldName: string, context: IConnectorContribution): Observable<any> | any => {
+        if (this.validations[context.title] && this.validations[context.title][fieldName]) {
+            delete this.validations[context.title][fieldName];
+        }
+
+        if (!this.validations[context.title]) {
+            this.validations[context.title] = {};
+        }
+        // if (fieldName === 'DocsMetadata') {
+        //     return this.connection(context.settings)
+        //         //             .switchMap(cdata => cdata.DocsMetadata !== "" && !cdata.authorizationNeeded() ? Observable.of(cdata.DocsMetadata) : cdata.getDocsMetadata(cdata.WI_STUDIO_OAUTH_CONNECTOR_INFO))
+        //         .switchMap(cdata => cdata.getDocsMetadata(cdata.WI_STUDIO_OAUTH_CONNECTOR_INFO))
+        //         .map(docs => {
+        //             return JSON.stringify(docs);
+        //         })
+        //         .catch(err => {
+        //             console.log("Failed to retrieve docsMetadata: " + err.message);
+        //             this.validations[context.title][fieldName] = { error: 'Azure-1003', message: err.message };
+        //             //  this.messaging.emit<any>(context.title + cdata.name + 'properties', err);
+        //             return Observable.of(this.NO_CHANGE);
+        //         });
+        // }
         return null;
     }
 
@@ -114,12 +142,6 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                                     .setValid(true);
                                     return Observable.of(vresult);
                             }
-                            case "resourceURI":
-                            if (arrayObj.get("sasFlag") === "Generate SAS token") {
-                                return ValidationResult.newValidationResult().setVisible(true);
-                            }else {
-                                return ValidationResult.newValidationResult().setVisible(false);
-                            }
                             case "authorizationRuleName":
                             if (arrayObj.get("sasFlag") === "Generate SAS token") {
                                 return ValidationResult.newValidationResult().setVisible(true);
@@ -144,7 +166,6 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                             }else {
                                 return ValidationResult.newValidationResult().setVisible(true);
                             }
-                            return null;
                         }
                 }
 
@@ -198,11 +219,23 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                         return con;
                     }))
                 .switchMap(conData => {
-                    if (conData.sasFlag === "Generate SAS token") {
-                    let stringToSign = "";
+                    if ( conData.resourceURI === "") {
+                        throw new Error("Please enter the resource URI");
+                    }
                     let resourceURL = "";
-                    resourceURL = conData.resourceURI;
-        stringToSign = (conData.resourceURI !== null && conData.resourceURI.trim().length > 0) ? (stringToSign + conData.resourceURI) : "errorMsg";
+                    resourceURL = "https://" + conData.resourceURI + ".servicebus.windows.net";
+                    if (conData.sasFlag === "Generate SAS token") {
+                        if ( conData.primarysecondaryKey === "") {
+                            throw new Error("Please enter the primary/secondaryKey");
+                        }
+                        if ( conData.authorizationRuleName === "") {
+                            throw new Error("Please enter the Authorization RuleName");
+                        }
+                        if ( conData.expiryDate === "") {
+                            throw new Error("Please enter the expiryDate");
+                        }
+                    let stringToSign = "";
+        stringToSign = (resourceURL !== null && resourceURL.trim().length > 0) ? (stringToSign + resourceURL) : "errorMsg";
         let expiryDate = new Date(conData.expiryDate);
         conData.expiryDate = String(expiryDate.getTime() / 1000.0);
         stringToSign = (encodeURIComponent(stringToSign) + "\n" + conData.expiryDate);
@@ -227,6 +260,10 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
     }else if (conData.sasFlag === "Enter SAS token") {
         if (conData.sasToken !== "") {
             sharedaccesssignature = conData.sasToken;
+    }
+    else {
+        return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                        .setResult(new ValidationError("AZSERVICEBUSCONN-1003", "SAS Token is empty. Please provide a valid SAS token")));
     }
     }
         console.log(sharedaccesssignature);
@@ -272,8 +309,13 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                         for (let i = 0; i < context.settings.length; i++) {
                             if (context.settings[i].name === "WI_STUDIO_OAUTH_CONNECTOR_INFO") {
                                 context.settings[i].value = sharedaccesssignature;
-                                break;
-                            }
+                                if ( context.settings["primarysecondaryKey"] != null) {
+                                    context.settings["primarysecondaryKey"].value = "";
+                                }
+                            }else if (context.settings[i].name === "DocsMetadata") {
+                            context.settings[i].value = JsonSchema.Types.schemaDoc();
+                            //    console.log(context.settings[i].value);
+                        }
                         }
                         let actionResult = {
                             context: context,
@@ -284,7 +326,7 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                     }
                         else {
                     return Observable.of(ActionResult.newActionResult().setSuccess(false)
-                        .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText)));
+                        .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
                     }
                 });
         }
