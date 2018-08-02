@@ -22,8 +22,8 @@ export namespace JsonSchema {
                   "brokerProperties": {"type": "object", "properties": {
                       "ContentType": { "type" : "string"},
                       "CorrelationId": {"type" : "string"},
-                      "TimeToLive": { "type" : "string"},
-                      "ForcePersistence": {"type": "bool"},
+                      "TimeToLive": { "type" : "integer", "minimum": 0},
+                      "ForcePersistence": {"type": "boolean"},
                       "Label": {"type" : "string"},
                       "MessageId": {"type" : "string"},
                       "PartitionKey": {"type" : "string"},
@@ -70,8 +70,8 @@ export namespace JsonSchema {
                   "brokerProperties": {"type": "object", "properties": {
                       "ContentType": { "type" : "string"},
                       "CorrelationId": {"type" : "string"},
-                      "TimeToLive": { "type" : "string"},
-                      "ForcePersistence": {"type": "bool"},
+                      "TimeToLive": { "type" : "integer", "minimum": 0},
+                      "ForcePersistence": {"type": "boolean"},
                       "Label": {"type" : "string"},
                       "MessageId": {"type" : "string"},
                       "PartitionKey": {"type" : "string"},

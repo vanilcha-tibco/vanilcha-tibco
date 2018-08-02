@@ -51,11 +51,7 @@ func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 	log.Debug("Reading entity name")
 
 	oName := context.GetInput("entityName")
-	if oName == nil || oName.(string) == "" {
-		//return false, activity.NewError("AzureServiceBus entity name is not configured", "AZSERVICEBUS-PUBLISH-4002", nil)
-	}
 	entityType := context.GetInput("entityType").(string)
-	//log.Debug("entityName is %s", entityType)
 	entityName := oName.(string)
 	inputData := GetComplexValue(context.GetInput("input").(*data.ComplexObject))
 	if inputData == nil || inputData == "{}" {

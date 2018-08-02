@@ -18,7 +18,6 @@ import 'wi-studio/common/rxjs-extensions';
 import { IValidationResult, ValidationResult, ValidationError } from 'wi-studio/common/models/validation';
 import 'rxjs/add/observable/zip';
 import * as cryptos from "crypto-js";
-import { jsonpFactory } from '@angular/http/src/http_module';
 import { JsonSchema } from './schemadoc';
 
 class Result {
@@ -42,12 +41,6 @@ export class Connection {
     public configProperties: string;
     public sasToken: string;
     public static dateRegx = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2]\d|3[0-1])T(?:[0-1]\d|2[0-3]):[0-5]\d:[0-5]\dZ/;
-  //  private REDIRECT_URI:   Observable<any> = WiContributionUtils.getEnvironment(this.http, 'OAUTH_REDIRECT_URL');
-  //  private SCOPE:          string = 'User.Read Files.ReadWrite.All Sites.ReadWrite.All';
-    private RESPONSE_TYPE:  string = 'code';
-    private PROMPT:         string = 'consent';
-   // private TOKEN_ENDPOINT: string = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
-   // private LOGIN_ENDPOINT: string = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
 
     constructor(private http: Http) { }
 
@@ -82,14 +75,10 @@ export class Connection {
 export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerContribution {
     private category:       string;
     private validations:    any;
-    private messaging:      IMessaging;
-    private clientSecretField = "clientSecret";
-    private NO_CHANGE = null;
     constructor(@Inject(Injector) injector, private http: Http) {
         super(injector, http);
         this.validations = {};
-        this.messaging = new WiContribMessaging();
-        this.category = 'azservicebus';
+        this.category = 'AzureServiceBus';
     }
 
     value = (fieldName: string, context: IConnectorContribution): Observable<any> | any => {
@@ -100,20 +89,6 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
         if (!this.validations[context.title]) {
             this.validations[context.title] = {};
         }
-        // if (fieldName === 'DocsMetadata') {
-        //     return this.connection(context.settings)
-        //         //             .switchMap(cdata => cdata.DocsMetadata !== "" && !cdata.authorizationNeeded() ? Observable.of(cdata.DocsMetadata) : cdata.getDocsMetadata(cdata.WI_STUDIO_OAUTH_CONNECTOR_INFO))
-        //         .switchMap(cdata => cdata.getDocsMetadata(cdata.WI_STUDIO_OAUTH_CONNECTOR_INFO))
-        //         .map(docs => {
-        //             return JSON.stringify(docs);
-        //         })
-        //         .catch(err => {
-        //             console.log("Failed to retrieve docsMetadata: " + err.message);
-        //             this.validations[context.title][fieldName] = { error: 'Azure-1003', message: err.message };
-        //             //  this.messaging.emit<any>(context.title + cdata.name + 'properties', err);
-        //             return Observable.of(this.NO_CHANGE);
-        //         });
-        // }
         return null;
     }
 
@@ -269,9 +244,7 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                         .setResult(new ValidationError("AZSERVICEBUSCONN-1003", "SAS Token is empty. Please provide a valid SAS token")));
     }
     }
-       // console.log(sharedaccesssignature);
         let xml = "<entry xmlns=\"http://www.w3.org/2005/Atom\"><content type=\"application/xml\"><QueueDescription xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"http://schemas.microsoft.com/netservices/2010/10/servicebus/connect\"></QueueDescription></content></entry>";
-      //   return WiProxyCORSUtils.createRequest(this.http, conData.resourceURI + "/myfirsttestqueue")
       resourceURL = "https://" + conData.resourceURI + ".servicebus.windows.net";
       return WiProxyCORSUtils.createRequest(this.http, resourceURL  + "/myfirsttestqueue")
         .addHeader("Accept", "application/atom+xml")
@@ -316,7 +289,6 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                                 context.settings[i].value = sharedaccesssignature;
                             }else if (context.settings[i].name === "DocsMetadata") {
                             context.settings[i].value = JsonSchema.Types.schemaDoc();
-                            //    console.log(context.settings[i].value);
                         }else if ( context.settings[i].name === "primarysecondaryKey") {
                             context.settings[i].value = "";
                         }

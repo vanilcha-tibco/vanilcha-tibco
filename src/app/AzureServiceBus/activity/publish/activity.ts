@@ -1,8 +1,7 @@
 import { Observable } from "rxjs/Observable";
-import { Http, Response, Headers, RequestOptions } from "@angular/http";
+import { Http } from "@angular/http";
 import { Inject, Injectable, Injector } from "@angular/core";
 import {
-    HTTP_METHOD,
     IActivityContribution,
     IConnectorContribution,
     IFieldDefinition,
@@ -11,11 +10,9 @@ import {
     WiContrib,
     WiContributionUtils,
     WiServiceHandlerContribution,
-    WiProxyCORSUtils, WiContribMessaging
+    WiContribMessaging
 } from "wi-studio/app/contrib/wi-contrib";
-import { WiInternalProxyCORSUtils } from "wi-studio/app/contrib/wi-contrib-internal";
 import { IMessaging } from 'wi-studio/common/models/messaging';
-import { JsonSchema } from "./activity.jsonschema";
 import { Connection } from './common';
 
 
@@ -24,14 +21,12 @@ import { Connection } from './common';
 
 export class AzServiceBusPublishActivityContribution extends WiServiceHandlerContribution {
 
-    private category: string;
     private messaging: IMessaging;
     private validations: any;
     private method: string;
 
     constructor(@Inject(Injector) injector, private http: Http) {
         super(injector, http);
-        this.category = 'AzureServiceBus';
         this.validations = {};
         this.messaging = new WiContribMessaging();
         this.method = 'post';
@@ -108,10 +103,6 @@ export class AzServiceBusPublishActivityContribution extends WiServiceHandlerCon
                         .newValidationResult().setError("SFP-QRY-MSG-1000", err));
                     return Observable.of("");
                 });
-                // return Observable.create(observer => {
-                //     observer.next(JSON.stringify(JsonSchema.Types.getInputObject(entityType)));
-                // });
-
             }
         }
         case "output" :  {
@@ -132,16 +123,6 @@ export class AzServiceBusPublishActivityContribution extends WiServiceHandlerCon
                             properties: outputSchema.properties
                         });
                     });
-                // return Observable.create(observer => {
-                //     let examplesSchema;
-                //     if (entityType === "Queue") {
-                //         examplesSchema = JsonSchema.Types.getOutputObject(entityType);
-                //     }
-                //     else if (entityType === "Topic") {
-                //         examplesSchema = JsonSchema.Types.getOutputObject(entityType);
-                //     }
-                //     observer.next(JSON.stringify(examplesSchema));
-       // });
             }
         }
         return null;

@@ -46,7 +46,7 @@ type (
 		ContentType            string `json:"ContentType"`
 		CorrelationId          string `json:"CorrelationId"`
 		EnqueuedSequenceNumber string `json:"EnqueuedSequenceNumber"`
-		ForcePersistence       string `json:"ForcePersistence"`
+		ForcePersistence       bool   `json:"ForcePersistence"`
 		Label                  string `json:"Label"`
 		MessageId              string `json:"MessageId"`
 		PartitionKey           string `json:"PartitionKey"`
@@ -101,10 +101,8 @@ func (connection *Connection) read(settings interface{}) (err error) {
 		element := value.(map[string]interface{})
 		switch element["name"].(string) {
 		case "resourceURI":
-			//resourceURI := connectionRef.FieldByName(element["name"].(string))
 			connection.baseURL = "https://" + fmt.Sprint(element["value"].(string)) + ".servicebus.windows.net"
 			log.Info("While getting the connection /" + connection.baseURL)
-			//resourceURI.SetString(fieldValue)
 		case "WI_STUDIO_OAUTH_CONNECTOR_INFO":
 			conInfo := element["value"].(string)
 			connection.accessToken = fmt.Sprint(conInfo)
@@ -151,8 +149,7 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 			// entityName = objectName
 		}
 	}
-	//log.Info(fmt.Sprintf("%v", inputparamtersmap["messageString"]))
-	//log.Info(queryURL)
+	log.Info("Contacting Backend Servicebus System to send message to " + objectType + " :" + entityName)
 	log.Info("before creating the request")
 	req, err := http.NewRequest(methodName, queryURL, bytes.NewBuffer([]byte(inputparamtersmap["messageString"].(string))))
 	//	log.Info(req)
@@ -165,11 +162,10 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	publishInput := PublishRequest{}
 	json.Unmarshal(dataBytes, &publishInput)
 	req.Header.Add("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
-	//log.Info(connection.accessToken)
 	req.Header.Add("Authorization", connection.accessToken)
-	//log.Info(publishInput.BrokerProperties)
 	if (BrokerProperties{}) != (publishInput.BrokerProperties) {
 		var bufferRecep bytes.Buffer
+		var bufferRecep1 bytes.Buffer
 		typeOft := reflect.ValueOf(&publishInput.BrokerProperties).Elem().Type()
 		v := reflect.ValueOf(publishInput.BrokerProperties)
 		values := make([]interface{}, v.NumField())
@@ -178,18 +174,21 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 			values[i] = v.Field(i).Interface()
 			if fmt.Sprintf("%v", values[i]) != "" {
 				bufferRecep.WriteString("\"" + typeOft.Field(i).Name + "\":")
-
-				bufferRecep.WriteString("\"" + fmt.Sprintf("%v", values[i]) + "\"")
+				if reflect.TypeOf(values[i]) == reflect.TypeOf("string") {
+					bufferRecep.WriteString("\"" + fmt.Sprintf("%v", values[i]) + "\"")
+				} else {
+					bufferRecep.WriteString(fmt.Sprintf("%v", values[i]))
+				}
 
 				if i+1 != v.NumField() {
 					bufferRecep.WriteString(",")
-				} else {
-					bufferRecep.WriteString("}")
 				}
 			}
 		}
-		if bufferRecep.String() != "" {
-			req.Header.Add("BrokerProperties", bufferRecep.String())
+		bufferRecep1.WriteString(strings.TrimSuffix(bufferRecep.String(), ","))
+		bufferRecep1.WriteString("}")
+		if bufferRecep1.String() != "" {
+			req.Header.Add("BrokerProperties", bufferRecep1.String())
 		}
 	}
 	log.Info("Deserialized input mapping data... making http call")
@@ -217,8 +216,6 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 			return nil, fmt.Errorf("response reading error %s", err.Error())
 		}
 		databytes, _ := json.Marshal(actulaResponse)
-		//s := string(databytes)
-		//log.Debug(s)
 		err = json.Unmarshal(databytes, &responseData)
 		log.Info(responseData)
 		if err != nil && response.StatusCode != 204 {
@@ -237,7 +234,6 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 // Call makes an HTTP API call into the Zoho System
 func (connection *Connection) Call(objectType string, objectName string, inputData interface{}, methodName string) (responseData map[string]interface{}, err error) {
 
-	//log.Infof("Querying Backend Servicebus System for entity name %s", objectName)
 	maxRetries := 2
 
 	for tries := 0; tries < maxRetries; tries++ {

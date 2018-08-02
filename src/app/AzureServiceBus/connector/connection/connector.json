@@ -7,7 +7,9 @@
   "display": {
     "description": "Establish connection to your Azure ServiceBus account",
     "category": "AzureServiceBus",
-    "visible": true
+    "visible": true,
+    "smallIcon": "icons/azure_service_bus.png",
+    "largeIcon": "icons/azure_service_bus.png"
   },
   "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection",
   "keyfield": "name",
@@ -61,7 +63,7 @@
       "required": true,
       "display": {
         "name": "Authorization Rule Name",
-        "visible": true
+        "visible": true        
       }
     },   
     {
@@ -71,7 +73,8 @@
       "display": {
           "name": "Primary/Secondary Key",
           "visible": true,
-          "type": "password"
+          "type": "password",
+          "encryptable":true
       }
     },
     {
@@ -89,7 +92,8 @@
       "required": true,
       "display": {
         "name": "SAS Token",
-        "visible": false
+        "visible": false,
+        "encryptable":true
       }
     },
     {
@@ -97,7 +101,8 @@
       "type": "string",
       "required": true,
       "display": {
-        "visible": false
+        "visible": false,
+        "encryptable":true
       }
     },
     {

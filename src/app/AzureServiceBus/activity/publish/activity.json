@@ -8,8 +8,8 @@
     "category": "AzureServiceBus",
     "visible": true,
     "description": "AzureServiceBus Publish Activity",
-    "smallIcon": "icons/ic-sfpardot-query@2x.png",
-    "largeIcon": "icons/ic-sfpardot-query@3x.png"
+    "smallIcon": "icons/azservicebus-publish@2x.png",
+    "largeIcon": "icons/azservicebus-publish@3x.png"
   },
   "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/activity/publish",
   "inputs": [{

@@ -130,7 +130,8 @@ func TestPublishMessagetoQueue(t *testing.T) {
 	var inputParams interface{}
 	var inputJSON = []byte(`{"parameters":{
 		"queueName": "testqueue",
-		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>"	
+		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>",
+		"brokerProperties":{"Label":"Test"}	
 		}	
 	}`)
 
