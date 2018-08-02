@@ -41,6 +41,7 @@ export class Connection {
     public expiryDate: string;
     public configProperties: string;
     public sasToken: string;
+    public static dateRegx = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2]\d|3[0-1])T(?:[0-1]\d|2[0-3]):[0-5]\d:[0-5]\dZ/;
   //  private REDIRECT_URI:   Observable<any> = WiContributionUtils.getEnvironment(this.http, 'OAUTH_REDIRECT_URL');
   //  private SCOPE:          string = 'User.Read Files.ReadWrite.All Sites.ReadWrite.All';
     private RESPONSE_TYPE:  string = 'code';
@@ -219,20 +220,23 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                         return con;
                     }))
                 .switchMap(conData => {
+                    if (!(conData.name !== null && conData.name.trim().length > 0)) {
+                        throw new Error(`Please enter the Connection Name!`);
+                    }
                     if ( conData.resourceURI === "") {
                         throw new Error("Please enter the resource URI");
                     }
                     let resourceURL = "";
                     resourceURL = "https://" + conData.resourceURI + ".servicebus.windows.net";
                     if (conData.sasFlag === "Generate SAS token") {
-                        if ( conData.primarysecondaryKey === "") {
-                            throw new Error("Please enter the primary/secondaryKey");
-                        }
                         if ( conData.authorizationRuleName === "") {
-                            throw new Error("Please enter the Authorization RuleName");
+                            throw new Error("Please enter the Authorization Rule Name!");
                         }
-                        if ( conData.expiryDate === "") {
-                            throw new Error("Please enter the expiryDate");
+                        if ( conData.primarysecondaryKey === "") {
+                            throw new Error("Please enter the primary/secondaryKey!");
+                        }
+                        if (!(Connection.dateRegx.test(conData.expiryDate))) {
+                            throw new Error(`Please enter date in UTC format YYYY-MM-DDThh:mm:ssZ !`);
                         }
                     let stringToSign = "";
         stringToSign = (resourceURL !== null && resourceURL.trim().length > 0) ? (stringToSign + resourceURL) : "errorMsg";
@@ -251,11 +255,10 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
         let decodedKey = (signingKey);
         hash = cryptos.HmacSHA256(stringToSign, decodedKey);
         hashInBase64 = cryptos.enc.Base64.stringify(hash);
-        console.log("sig:" + hashInBase64);
         hashInBase64 = encodeURIComponent(hashInBase64);
         resourceURL = encodeURIComponent(resourceURL);
         console.log(resourceURL);
-        console.log("sig:" + hashInBase64);
+        conData.primarysecondaryKey = "";
         sharedaccesssignature = "SharedAccessSignature sr=" + resourceURL + "&sig=" + hashInBase64 + "&se=" + conData.expiryDate + "&skn=" + conData.authorizationRuleName;
     }else if (conData.sasFlag === "Enter SAS token") {
         if (conData.sasToken !== "") {
@@ -266,10 +269,11 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                         .setResult(new ValidationError("AZSERVICEBUSCONN-1003", "SAS Token is empty. Please provide a valid SAS token")));
     }
     }
-        console.log(sharedaccesssignature);
+       // console.log(sharedaccesssignature);
         let xml = "<entry xmlns=\"http://www.w3.org/2005/Atom\"><content type=\"application/xml\"><QueueDescription xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"http://schemas.microsoft.com/netservices/2010/10/servicebus/connect\"></QueueDescription></content></entry>";
       //   return WiProxyCORSUtils.createRequest(this.http, conData.resourceURI + "/myfirsttestqueue")
-      return WiProxyCORSUtils.createRequest(this.http, conData.resourceURI )
+      resourceURL = "https://" + conData.resourceURI + ".servicebus.windows.net";
+      return WiProxyCORSUtils.createRequest(this.http, resourceURL  + "/myfirsttestqueue")
         .addHeader("Accept", "application/atom+xml")
         .addHeader("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
         .addHeader("Authorization", sharedaccesssignature)
@@ -283,8 +287,9 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                         context.settings[i].value = sharedaccesssignature;
                         break;
                     }
+                }
 
-                    WiProxyCORSUtils.createRequest(this.http, conData.resourceURI + "/myfirsttestqueue")
+                    WiProxyCORSUtils.createRequest(this.http, resourceURL + "/myfirsttestqueue")
                     .addHeader("Accept", "application/atom+xml")
                     .addHeader("Content-Type", "application/atom+xml")
                     .addHeader("Authorization", sharedaccesssignature)
@@ -293,8 +298,6 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                     .catch(err => {
                     return Observable.of(ActionResult.newActionResult().setSuccess(true));
                      });
-
-                }
                 let actionResult = {
                     context: context,
                     authType: AUTHENTICATION_TYPE.BASIC,
@@ -304,17 +307,18 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
             }
         });
                 })
-                .catch( (response: Response) => {
+                .catch( (response => {
+                    if (response instanceof Response) {
+                    if (response.status) {
                     if (response.status !== 401) {
                         for (let i = 0; i < context.settings.length; i++) {
                             if (context.settings[i].name === "WI_STUDIO_OAUTH_CONNECTOR_INFO") {
                                 context.settings[i].value = sharedaccesssignature;
-                                if ( context.settings["primarysecondaryKey"] != null) {
-                                    context.settings["primarysecondaryKey"].value = "";
-                                }
                             }else if (context.settings[i].name === "DocsMetadata") {
                             context.settings[i].value = JsonSchema.Types.schemaDoc();
                             //    console.log(context.settings[i].value);
+                        }else if ( context.settings[i].name === "primarysecondaryKey") {
+                            context.settings[i].value = "";
                         }
                         }
                         let actionResult = {
@@ -328,7 +332,19 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                     return Observable.of(ActionResult.newActionResult().setSuccess(false)
                         .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
                     }
-                });
+                }
+                else {
+                        return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                            .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
+                }
+                }
+                else if (response instanceof Error) {
+                    console.log("AuthenticationFailed: " + response);
+                    return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                    .setResult(new ValidationError("AZSERVICEBUSCONN-1005", "Connection Authentication error: " + response.message)));
+                }
+            }
+            ));
         }
     }
 

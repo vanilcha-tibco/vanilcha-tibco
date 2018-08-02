@@ -115,38 +115,47 @@ func (connection *Connection) read(settings interface{}) (err error) {
 }
 
 // doCall is a private implementation helper for making HTTP calls into the Zoho System
-func (connection *Connection) doCall(objectType string, objectName string, inputData interface{}, methodName string) (response *http.Response, err error) {
+func (connection *Connection) doCall(objectType string, objectName string, inputData interface{}, methodName string) (responseData map[string]interface{}, err error) {
 	log.Info("Invoking Azure ServiceBus backend")
 	queryURL := ""
+	entityName := ""
+
+	actulaResponse := PublishResponse{}
 	inputMap := make(map[string]interface{})
 	if inputData != nil {
 		for k, v := range inputData.(map[string]interface{}) {
 			inputMap[k] = v
 		}
 	}
-	inputparamtersmap := make(map[string]string)
+	inputparamtersmap := make(map[string]interface{})
 	for k, v := range inputMap["parameters"].(map[string]interface{}) {
 		inputparamtersmap[k] = fmt.Sprint(v)
 	}
 
 	if objectType == "Queue" {
-		if inputparamtersmap["queueName"] != "" {
-			queryURL = connection.baseURL + "/" + inputparamtersmap["queueName"] + "/messages"
+		if inputparamtersmap["queueName"] != nil && inputparamtersmap["queueName"].(string) != "" {
+			queryURL = connection.baseURL + "/" + inputparamtersmap["queueName"].(string) + "/messages"
+			entityName = inputparamtersmap["queueName"].(string)
 		} else {
-			queryURL = connection.baseURL + "/" + objectName + "/messages"
+			return nil, fmt.Errorf("Queue Name cannot be empty %s", "")
+			// queryURL = connection.baseURL + "/" + objectName + "/messages"
+			// entityName = objectName
 		}
 	} else {
-		if inputparamtersmap["topicName"] != "" {
-			queryURL = connection.baseURL + "/" + inputparamtersmap["topicName"] + "/messages"
+		if inputparamtersmap["topicName"] != nil && inputparamtersmap["topicName"].(string) != "" {
+			queryURL = connection.baseURL + "/" + inputparamtersmap["topicName"].(string) + "/messages"
+			entityName = inputparamtersmap["topicName"].(string)
 		} else {
-			queryURL = connection.baseURL + "/" + objectName + "/messages"
+			return nil, fmt.Errorf("Topic Name cannot be empty %s", "")
+			// queryURL = connection.baseURL + "/" + objectName + "/messages"
+			// entityName = objectName
 		}
 	}
-	log.Info(fmt.Sprintf("%v", inputparamtersmap["messageString"]))
-	log.Info(queryURL)
+	//log.Info(fmt.Sprintf("%v", inputparamtersmap["messageString"]))
+	//log.Info(queryURL)
 	log.Info("before creating the request")
-	req, err := http.NewRequest(methodName, queryURL, bytes.NewBuffer([]byte(inputparamtersmap["messageString"])))
-	log.Info(req)
+	req, err := http.NewRequest(methodName, queryURL, bytes.NewBuffer([]byte(inputparamtersmap["messageString"].(string))))
+	//	log.Info(req)
 	log.Info("before reading input")
 	dataBytes, err := json.Marshal(inputMap["parameters"])
 	if err != nil {
@@ -156,9 +165,9 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	publishInput := PublishRequest{}
 	json.Unmarshal(dataBytes, &publishInput)
 	req.Header.Add("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
-	log.Info(connection.accessToken)
+	//log.Info(connection.accessToken)
 	req.Header.Add("Authorization", connection.accessToken)
-	log.Info(publishInput.BrokerProperties)
+	//log.Info(publishInput.BrokerProperties)
 	if (BrokerProperties{}) != (publishInput.BrokerProperties) {
 		var bufferRecep bytes.Buffer
 		typeOft := reflect.ValueOf(&publishInput.BrokerProperties).Elem().Type()
@@ -185,12 +194,39 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	}
 	log.Info("Deserialized input mapping data... making http call")
 	client := &http.Client{}
-	response, err = client.Do(req)
-	log.Info("Status is %v\n", response.Status)
-	if response.Status == "201" {
-
-	}
+	response, err := client.Do(req)
 	jsonResponseData, err := ioutil.ReadAll(response.Body)
+	//log.Info("Status is %v\n", response.Status)
+	if strings.HasPrefix(strconv.Itoa(response.StatusCode), "4") || strings.HasPrefix(strconv.Itoa(response.StatusCode), "5") {
+		actulaResponse.ResponseCode = strconv.Itoa(response.StatusCode)
+		actulaResponse.ResponseMessage = string(jsonResponseData)
+		databytes, _ := json.Marshal(actulaResponse)
+		responseData := make(map[string]interface{})
+		err = json.Unmarshal(databytes, &responseData)
+		if err != nil && response.StatusCode != 204 {
+			return nil, fmt.Errorf("cannot unmarshall response %s", err.Error())
+		}
+		return responseData, fmt.Errorf("Publish Message to "+objectType+" : "+entityName+"  failed: %s, %v", response.Status, string(jsonResponseData))
+	} else if strings.HasPrefix(strconv.Itoa(response.StatusCode), "2") {
+		jsonResponse := []byte(response.Status)
+		actulaResponse.ResponseMessage = string(jsonResponse)
+		actulaResponse.ResponseMessage += " /Published message to " + objectType + " : " + entityName + " successfully / " + string(jsonResponse)
+		jsonResponse = []byte(strconv.Itoa(response.StatusCode))
+		actulaResponse.ResponseCode = string(jsonResponse)
+		if err != nil {
+			return nil, fmt.Errorf("response reading error %s", err.Error())
+		}
+		databytes, _ := json.Marshal(actulaResponse)
+		//s := string(databytes)
+		//log.Debug(s)
+		err = json.Unmarshal(databytes, &responseData)
+		log.Info(responseData)
+		if err != nil && response.StatusCode != 204 {
+			return nil, fmt.Errorf("cannot unmarshall response %s", err.Error())
+		}
+		return responseData, nil
+	}
+
 	log.Info(string(jsonResponseData))
 	if err != nil {
 		return nil, fmt.Errorf("http invocation failed %s, status code %v", err.Error(), response.StatusCode)
@@ -201,53 +237,13 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 // Call makes an HTTP API call into the Zoho System
 func (connection *Connection) Call(objectType string, objectName string, inputData interface{}, methodName string) (responseData map[string]interface{}, err error) {
 
-	log.Infof("Querying Backend Servicebus System for entity name %s", objectName)
+	//log.Infof("Querying Backend Servicebus System for entity name %s", objectName)
 	maxRetries := 2
-	actulaResponse := PublishResponse{}
-	jsonResponse := []byte("")
 
 	for tries := 0; tries < maxRetries; tries++ {
-		response, err := connection.doCall(objectType, objectName, inputData, methodName)
-		defer response.Body.Close()
+		responseData, err := connection.doCall(objectType, objectName, inputData, methodName)
 		if err != nil {
 			return nil, fmt.Errorf("backend invocation error: %s", err.Error())
-		}
-		jsonResponse, err = ioutil.ReadAll(response.Body)
-		if strings.HasPrefix(strconv.Itoa(response.StatusCode), "4") || strings.HasPrefix(strconv.Itoa(response.StatusCode), "5") {
-			actulaResponse.ResponseCode = strconv.Itoa(response.StatusCode)
-			actulaResponse.ResponseMessage = string(jsonResponse)
-			databytes, _ := json.Marshal(actulaResponse)
-			s := string(databytes)
-			log.Info(s)
-
-			responseData = make(map[string]interface{})
-			err = json.Unmarshal(databytes, &responseData)
-			log.Info(responseData)
-			if err != nil && response.StatusCode != 204 {
-				return nil, fmt.Errorf("cannot unmarshall response %s", err.Error())
-			}
-			return responseData, fmt.Errorf("Publish Message to "+objectType+" failed: %s, %v", response.Status, string(jsonResponse))
-		} else if strings.HasPrefix(strconv.Itoa(response.StatusCode), "2") {
-			res2B, _ := json.Marshal(actulaResponse)
-			fmt.Println(string(res2B))
-			actulaResponse.ResponseMessage = string(jsonResponse)
-			jsonResponse = []byte(response.Status)
-			actulaResponse.ResponseMessage += "Published message to " + objectType + " successfully / " + string(jsonResponse)
-			jsonResponse = []byte(strconv.Itoa(response.StatusCode))
-			actulaResponse.ResponseCode = string(jsonResponse)
-			if err != nil {
-				return nil, fmt.Errorf("response reading error %s", err.Error())
-			}
-			databytes, _ := json.Marshal(actulaResponse)
-			s := string(databytes)
-			log.Info(s)
-
-			responseData = make(map[string]interface{})
-			err = json.Unmarshal(databytes, &responseData)
-			log.Info(responseData)
-			if err != nil && response.StatusCode != 204 {
-				return nil, fmt.Errorf("cannot unmarshall response %s", err.Error())
-			}
 		}
 		return responseData, nil
 	}

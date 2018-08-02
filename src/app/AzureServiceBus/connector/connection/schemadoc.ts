@@ -22,7 +22,7 @@ export namespace JsonSchema {
                   "brokerProperties": {"type": "object", "properties": {
                       "ContentType": { "type" : "string"},
                       "CorrelationId": {"type" : "string"},
-                      "EnqueuedSequenceNumber": { "type" : "long"},
+                      "TimeToLive": { "type" : "string"},
                       "ForcePersistence": {"type": "bool"},
                       "Label": {"type" : "string"},
                       "MessageId": {"type" : "string"},
@@ -70,7 +70,7 @@ export namespace JsonSchema {
                   "brokerProperties": {"type": "object", "properties": {
                       "ContentType": { "type" : "string"},
                       "CorrelationId": {"type" : "string"},
-                      "EnqueuedSequenceNumber": { "type" : "long"},
+                      "TimeToLive": { "type" : "string"},
                       "ForcePersistence": {"type": "bool"},
                       "Label": {"type" : "string"},
                       "MessageId": {"type" : "string"},

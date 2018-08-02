@@ -35,7 +35,8 @@
         "type": "dropdown",
         "selection": "single",
         "visible": true
-      }      
+      },
+      "value":"Queue"           
     },   
     {
       "name": "entityName",
@@ -44,7 +45,7 @@
       "display": {
         "name": "Entity Name",
         "description": "AzureServiceBus entity name to publish message",       
-        "visible": true
+        "visible": false
       }
     },
     {

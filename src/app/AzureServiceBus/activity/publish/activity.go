@@ -38,8 +38,6 @@ func GetComplexValue(complexObject *data.ComplexObject) interface{} {
 // Eval implements activity.Activity.Eval
 func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 	log.Info("AzureServiceBus publish message Activity")
-	log.Info("AzureServiceBus publish message Activity")
-	log.Info(context.GetInput("Connection"))
 	connector := context.GetInput("Connection")
 	if connector == nil {
 		return false, fmt.Errorf("AzureServiceBus connection not configured")
@@ -54,10 +52,10 @@ func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 
 	oName := context.GetInput("entityName")
 	if oName == nil || oName.(string) == "" {
-		return false, activity.NewError("AzureServiceBus entity name is not configured", "AZSERVICEBUS-PUBLISH-4002", nil)
+		//return false, activity.NewError("AzureServiceBus entity name is not configured", "AZSERVICEBUS-PUBLISH-4002", nil)
 	}
 	entityType := context.GetInput("entityType").(string)
-	log.Debugf("entityName is %s", entityType)
+	//log.Debug("entityName is %s", entityType)
 	entityName := oName.(string)
 	inputData := GetComplexValue(context.GetInput("input").(*data.ComplexObject))
 	if inputData == nil || inputData == "{}" {
@@ -68,7 +66,7 @@ func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 
 	responseData, err := connection.Call(entityType, entityName, inputData, methodName)
 	if err != nil {
-		return false, activity.NewError(fmt.Sprintf("Failed to perform Azure Service Bus publish message for %s, %s", entityName, err.Error()), "AZSERVICEBUS-PUBLISH-4014", nil)
+		return false, activity.NewError(fmt.Sprintf("Failed to perform Azure Service Bus publish message for %s, %s", "", err.Error()), "AZSERVICEBUS-PUBLISH-4014", nil)
 	}
 
 	outputComplex := &data.ComplexObject{Metadata: "", Value: responseData}

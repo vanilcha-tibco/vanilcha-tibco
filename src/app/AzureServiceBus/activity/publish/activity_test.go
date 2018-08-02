@@ -63,7 +63,7 @@ var serviceBusConnectionJSON = `{
 		"display": {
 		  "visible": false
 		},
-		"value":"SharedAccessSignature sr=https%3A%2F%2Fspaddindev.servicebus.windows.net%2F&sig=0IDsg1DfqAGJ2Mt%2BlaHrM0U3%2FJkRgENiwTEVCT31Q4Y%3D&se=1533117702&skn=PluginServiceBus"
+		"value":"SharedAccessSignature sr=https%3A%2F%2Fspaddindev.servicebus.windows.net%2F&sig=%2F9GWuWYk3QU0SMm5aBYWiimfRl1qa%2FLUm7T9%2FVaEODI%3D&se=1533721824&skn=PluginServiceBus"
 	  }
 	],
 	"actions": [{
@@ -108,7 +108,7 @@ func getActivityMetadata() *activity.Metadata {
 func TestPublishMessagetoQueue(t *testing.T) {
 
 	log.SetLogLevel(logger.DebugLevel)
-	log.Info("****TEST : Executing Create folder test for testing conflict behavior replace start****")
+	log.Info("****TEST : Executing Publish Message to Queue  start****")
 	activity := NewActivity(getActivityMetadata())
 	tc := test.NewTestActivityContext(activity.Metadata())
 	var connection interface{}
@@ -122,16 +122,16 @@ func TestPublishMessagetoQueue(t *testing.T) {
 	cmap["settings"] = settings
 	tc.SetInput("Connection", cmap)
 	tc.SetInput("entityType", "Queue")
-	tc.SetInput("entityName", "Queue")
 
 	//	/api/campaign/version/3/do/read/id/<id>?...
 	//https://pi.zoho.com/api/login/version/3
 	// queryURL := connection.baseURL + "/" + objectName + "/version/3/do/read/{id}"
 
 	var inputParams interface{}
-	var inputJSON = []byte(`{
+	var inputJSON = []byte(`{"parameters":{
 		"queueName": "testqueue",
-		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>"		
+		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>"	
+		}	
 	}`)
 
 	err = json.Unmarshal(inputJSON, &inputParams)
@@ -161,7 +161,7 @@ func TestPublishMessagetoQueue(t *testing.T) {
 func TestPublishMessagetoTopic(t *testing.T) {
 
 	log.SetLogLevel(logger.DebugLevel)
-	log.Info("****TEST : Executing Create folder test for testing conflict behavior replace start****")
+	log.Info("****TEST : Executing Publish Message to Topic start****")
 	activity := NewActivity(getActivityMetadata())
 	tc := test.NewTestActivityContext(activity.Metadata())
 	var connection interface{}
@@ -174,7 +174,6 @@ func TestPublishMessagetoTopic(t *testing.T) {
 	settings := cmap["settings"]
 	cmap["settings"] = settings
 	tc.SetInput("Connection", cmap)
-	tc.SetInput("entityName", "myfirsttopic")
 	tc.SetInput("entityType", "Topic")
 
 	//	/api/campaign/version/3/do/read/id/<id>?...
