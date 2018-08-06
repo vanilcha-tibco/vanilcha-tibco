@@ -57,6 +57,26 @@ var serviceBusConnectionJSON = `{
 		"value":"spaddindev"
 	  },
 	  {
+		"name": "authorizationRuleName",
+		"type": "string",
+		"required": true,
+		"display": {
+		  "name": "Resource URI",
+		  "visible": true
+		},
+		"value":"PluginServiceBus"
+	  },
+	  {
+		"name": "primarysecondaryKey",
+		"type": "string",
+		"required": true,
+		"display": {
+		  "name": "Resource URI",
+		  "visible": true
+		},
+		"value":"wPdI5Lk/Dh8b3GT8Z3R4pIb/7mCTBlr8CQ9gaSBVvFg="
+	  },
+	  {
 		"name": "WI_STUDIO_OAUTH_CONNECTOR_INFO",
 		"type": "string",
 		"required": true,
@@ -130,7 +150,7 @@ func TestPublishMessagetoQueue(t *testing.T) {
 	var inputParams interface{}
 	var inputJSON = []byte(`{"parameters":{
 		"queueName": "testqueue",
-		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>",
+		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message now.</string>",
 		"brokerProperties":{"Label":"Test"}	
 		}	
 	}`)

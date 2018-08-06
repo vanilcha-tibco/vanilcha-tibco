@@ -23,13 +23,11 @@ export namespace JsonSchema {
                       "ContentType": { "type" : "string"},
                       "CorrelationId": {"type" : "string"},
                       "TimeToLive": { "type" : "integer", "minimum": 0},
-                      "ForcePersistence": {"type": "boolean"},
+                      "DeliveryCount": { "type" : "integer", "minimum": 0},                     
                       "Label": {"type" : "string"},
                       "MessageId": {"type" : "string"},
                       "PartitionKey": {"type" : "string"},
-                      "ReplyTo": {"type" : "string"},
-                      "ReplyToSessionId": {"type" : "string"},
-                      "SessionId": {"type" : "string"},
+                      "ReplyTo": {"type" : "string"},                      
                       "To": {"type" : "string"},
                       "ViaPartitionKey": {"type" : "string"}
                   }  }
@@ -45,8 +43,7 @@ export namespace JsonSchema {
                 "definitions": {},
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "additionalProperties": false,
-                "properties": {
-                  "responseCode": { "type": "string" },
+                "properties": {                  
                   "responseMessage": {"type": "string" }
           }
               }
@@ -71,13 +68,11 @@ export namespace JsonSchema {
                       "ContentType": { "type" : "string"},
                       "CorrelationId": {"type" : "string"},
                       "TimeToLive": { "type" : "integer", "minimum": 0},
-                      "ForcePersistence": {"type": "boolean"},
+                      "DeliveryCount": { "type" : "integer", "minimum": 0},                     
                       "Label": {"type" : "string"},
                       "MessageId": {"type" : "string"},
                       "PartitionKey": {"type" : "string"},
-                      "ReplyTo": {"type" : "string"},
-                      "ReplyToSessionId": {"type" : "string"},
-                      "SessionId": {"type" : "string"},
+                      "ReplyTo": {"type" : "string"},                      
                       "To": {"type" : "string"},
                       "ViaPartitionKey": {"type" : "string"}
                   }  }
@@ -93,8 +88,7 @@ export namespace JsonSchema {
                 "definitions": {},
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "additionalProperties": false,
-                "properties": {
-                  "responseCode": { "type": "string" },
+                "properties": {                 
                   "responseMessage": {"type": "string" }
           }
               }

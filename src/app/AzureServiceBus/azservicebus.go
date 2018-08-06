@@ -2,16 +2,15 @@ package azservicebus
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"reflect"
-	"strconv"
-	"strings"
+	"os"
+	"time"
 
+	servicebus "github.com/Azure/azure-service-bus-go"
 	"github.com/TIBCOSoftware/flogo-lib/logger"
 )
 
@@ -29,7 +28,8 @@ type (
 		accessToken                    string
 		refreshToken                   string
 		baseURL                        string
-		tokenURL                       string
+		sharedkey                      string
+		authruleName                   string
 	}
 )
 type (
@@ -43,25 +43,25 @@ type (
 type (
 	//BrokerProperties datastructure for storing BrokerProperties
 	BrokerProperties struct {
-		ContentType            string `json:"ContentType"`
-		CorrelationId          string `json:"CorrelationId"`
-		EnqueuedSequenceNumber string `json:"EnqueuedSequenceNumber"`
-		ForcePersistence       bool   `json:"ForcePersistence"`
-		Label                  string `json:"Label"`
-		MessageId              string `json:"MessageId"`
-		PartitionKey           string `json:"PartitionKey"`
-		ReplyTo                string `json:"ReplyTo"`
-		ReplyToSessionId       string `json:"ReplyToSessionId"`
-		SessionId              string `json:"SessionId"`
-		To                     string `json:"To"`
-		ViaPartitionKey        string `json:"ViaPartitionKey"`
+		ContentType      string         `json:"ContentType"`
+		CorrelationId    string         `json:"CorrelationId"`
+		ForcePersistence bool           `json:"ForcePersistence"`
+		Label            string         `json:"Label"`
+		MessageId        string         `json:"MessageId"`
+		PartitionKey     string         `json:"PartitionKey"`
+		ReplyTo          string         `json:"ReplyTo"`
+		ReplyToSessionId string         `json:"ReplyToSessionId"`
+		SessionId        string         `json:"SessionId"`
+		To               string         `json:"To"`
+		ViaPartitionKey  string         `json:"ViaPartitionKey"`
+		TimeToLive       *time.Duration `json:"TimeToLive"`
+		DeliveryCount    uint32         `json:"DeliveryCount"`
 	}
 )
 
 //PublishResponse datastructure for storing BrokerProperties
 type PublishResponse struct {
 	ResponseMessage string `json:"responseMessage"`
-	ResponseCode    string `json:"responseCode"`
 }
 
 var log = logger.GetLogger("az-servicebus")
@@ -101,12 +101,12 @@ func (connection *Connection) read(settings interface{}) (err error) {
 		element := value.(map[string]interface{})
 		switch element["name"].(string) {
 		case "resourceURI":
-			connection.baseURL = "https://" + fmt.Sprint(element["value"].(string)) + ".servicebus.windows.net"
+			connection.baseURL = fmt.Sprint(element["value"].(string))
 			log.Info("While getting the connection /" + connection.baseURL)
-		case "WI_STUDIO_OAUTH_CONNECTOR_INFO":
-			conInfo := element["value"].(string)
-			connection.accessToken = fmt.Sprint(conInfo)
-
+		case "authorizationRuleName":
+			connection.authruleName = fmt.Sprint(element["value"].(string))
+		case "primarysecondaryKey":
+			connection.sharedkey = fmt.Sprint(element["value"].(string))
 		}
 	}
 	return
@@ -115,7 +115,6 @@ func (connection *Connection) read(settings interface{}) (err error) {
 // doCall is a private implementation helper for making HTTP calls into the Zoho System
 func (connection *Connection) doCall(objectType string, objectName string, inputData interface{}, methodName string) (responseData map[string]interface{}, err error) {
 	log.Info("Invoking Azure ServiceBus backend")
-	queryURL := ""
 	entityName := ""
 
 	actulaResponse := PublishResponse{}
@@ -130,105 +129,112 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 		inputparamtersmap[k] = fmt.Sprint(v)
 	}
 
+	log.Info("Contacting Backend Servicebus System[] to send message to " + objectType + " :" + entityName)
+	log.Info("before creating the request")
+
+	connStr := "Endpoint=sb://" + connection.baseURL + ".servicebus.windows.net/;SharedAccessKeyName=" + connection.authruleName + ";SharedAccessKey=" + connection.sharedkey
+	ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connStr))
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	readresponseData := make(map[string]interface{})
+	var readError error
+	dataBytes, err := json.Marshal(inputMap["parameters"])
+	if err != nil {
+		log.Error(err)
+	}
+	publishInput := PublishRequest{}
+	json.Unmarshal(dataBytes, &publishInput)
+	reqSysProperties := servicebus.SystemProperties{}
+	if publishInput.BrokerProperties.PartitionKey != "" {
+		reqSysProperties.PartitionKey = &publishInput.BrokerProperties.PartitionKey
+	}
+	if publishInput.BrokerProperties.ViaPartitionKey != "" {
+		reqSysProperties.ViaPartitionKey = &publishInput.BrokerProperties.ViaPartitionKey
+	}
+	reqmessage := servicebus.Message{}
+	if publishInput.BrokerProperties.ContentType != "" {
+		reqmessage.ContentType = publishInput.BrokerProperties.ContentType
+	}
+	if publishInput.BrokerProperties.CorrelationId != "" {
+		reqmessage.CorrelationID = publishInput.BrokerProperties.CorrelationId
+	}
+	reqmessage.Data = []byte(inputparamtersmap["messageString"].(string))
+	if publishInput.BrokerProperties.MessageId != "" {
+		reqmessage.ID = publishInput.BrokerProperties.MessageId
+	}
+	if publishInput.BrokerProperties.Label != "" {
+		reqmessage.Label = publishInput.BrokerProperties.Label
+	}
+	if publishInput.BrokerProperties.ReplyTo != "" {
+		reqmessage.ReplyTo = publishInput.BrokerProperties.ReplyTo
+	}
+	if publishInput.BrokerProperties.To != "" {
+		reqmessage.To = publishInput.BrokerProperties.To
+	}
+	if publishInput.BrokerProperties.TimeToLive != nil {
+		reqmessage.TTL = publishInput.BrokerProperties.TimeToLive
+	}
+	if publishInput.BrokerProperties.DeliveryCount != 0 {
+		reqmessage.DeliveryCount = publishInput.BrokerProperties.DeliveryCount
+	}
+	if (reqSysProperties != servicebus.SystemProperties{}) {
+		reqmessage.SystemProperties = &reqSysProperties
+	}
 	if objectType == "Queue" {
 		if inputparamtersmap["queueName"] != nil && inputparamtersmap["queueName"].(string) != "" {
-			queryURL = connection.baseURL + "/" + inputparamtersmap["queueName"].(string) + "/messages"
+			// queryURL = connection.baseURL + "/" + inputparamtersmap["queueName"].(string) + "/messages"
 			entityName = inputparamtersmap["queueName"].(string)
 		} else {
 			return nil, fmt.Errorf("Queue Name cannot be empty %s", "")
 			// queryURL = connection.baseURL + "/" + objectName + "/messages"
 			// entityName = objectName
 		}
+
+		q, err := getQueue(ns, entityName)
+		if err != nil {
+			fmt.Printf("failed to build a new queue named %q\n", entityName)
+			os.Exit(1)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		readError = q.Send(ctx, &reqmessage)
 	} else {
 		if inputparamtersmap["topicName"] != nil && inputparamtersmap["topicName"].(string) != "" {
-			queryURL = connection.baseURL + "/" + inputparamtersmap["topicName"].(string) + "/messages"
+			//	queryURL = connection.baseURL + "/" + inputparamtersmap["topicName"].(string) + "/messages"
 			entityName = inputparamtersmap["topicName"].(string)
 		} else {
 			return nil, fmt.Errorf("Topic Name cannot be empty %s", "")
 			// queryURL = connection.baseURL + "/" + objectName + "/messages"
 			// entityName = objectName
 		}
-	}
-	log.Info("Contacting Backend Servicebus System to send message to " + objectType + " :" + entityName)
-	log.Info("before creating the request")
-	req, err := http.NewRequest(methodName, queryURL, bytes.NewBuffer([]byte(inputparamtersmap["messageString"].(string))))
-	//	log.Info(req)
-	log.Info("before reading input")
-	dataBytes, err := json.Marshal(inputMap["parameters"])
-	if err != nil {
-		log.Error(err)
-	}
-
-	publishInput := PublishRequest{}
-	json.Unmarshal(dataBytes, &publishInput)
-	req.Header.Add("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
-	req.Header.Add("Authorization", connection.accessToken)
-	if (BrokerProperties{}) != (publishInput.BrokerProperties) {
-		var bufferRecep bytes.Buffer
-		var bufferRecep1 bytes.Buffer
-		typeOft := reflect.ValueOf(&publishInput.BrokerProperties).Elem().Type()
-		v := reflect.ValueOf(publishInput.BrokerProperties)
-		values := make([]interface{}, v.NumField())
-		bufferRecep.WriteString("{")
-		for i := 0; i < v.NumField(); i++ {
-			values[i] = v.Field(i).Interface()
-			if fmt.Sprintf("%v", values[i]) != "" {
-				bufferRecep.WriteString("\"" + typeOft.Field(i).Name + "\":")
-				if reflect.TypeOf(values[i]) == reflect.TypeOf("string") {
-					bufferRecep.WriteString("\"" + fmt.Sprintf("%v", values[i]) + "\"")
-				} else {
-					bufferRecep.WriteString(fmt.Sprintf("%v", values[i]))
-				}
-
-				if i+1 != v.NumField() {
-					bufferRecep.WriteString(",")
-				}
-			}
-		}
-		bufferRecep1.WriteString(strings.TrimSuffix(bufferRecep.String(), ","))
-		bufferRecep1.WriteString("}")
-		if bufferRecep1.String() != "" {
-			req.Header.Add("BrokerProperties", bufferRecep1.String())
-		}
-	}
-	log.Info("Deserialized input mapping data... making http call")
-	client := &http.Client{}
-	response, err := client.Do(req)
-	jsonResponseData, err := ioutil.ReadAll(response.Body)
-	//log.Info("Status is %v\n", response.Status)
-	if strings.HasPrefix(strconv.Itoa(response.StatusCode), "4") || strings.HasPrefix(strconv.Itoa(response.StatusCode), "5") {
-		actulaResponse.ResponseCode = strconv.Itoa(response.StatusCode)
-		actulaResponse.ResponseMessage = string(jsonResponseData)
-		databytes, _ := json.Marshal(actulaResponse)
-		responseData := make(map[string]interface{})
-		err = json.Unmarshal(databytes, &responseData)
-		if err != nil && response.StatusCode != 204 {
-			return nil, fmt.Errorf("cannot unmarshall response %s", err.Error())
-		}
-		return responseData, fmt.Errorf("Publish Message to "+objectType+" : "+entityName+"  failed: %s, %v", response.Status, string(jsonResponseData))
-	} else if strings.HasPrefix(strconv.Itoa(response.StatusCode), "2") {
-		jsonResponse := []byte(response.Status)
-		actulaResponse.ResponseMessage = string(jsonResponse)
-		actulaResponse.ResponseMessage += " /Published message to " + objectType + " : " + entityName + " successfully / " + string(jsonResponse)
-		jsonResponse = []byte(strconv.Itoa(response.StatusCode))
-		actulaResponse.ResponseCode = string(jsonResponse)
+		t, err := getTopic(ns, entityName)
 		if err != nil {
-			return nil, fmt.Errorf("response reading error %s", err.Error())
+			fmt.Printf("failed to build a new queue named %q\n", entityName)
+			os.Exit(1)
 		}
-		databytes, _ := json.Marshal(actulaResponse)
-		err = json.Unmarshal(databytes, &responseData)
-		log.Info(responseData)
-		if err != nil && response.StatusCode != 204 {
-			return nil, fmt.Errorf("cannot unmarshall response %s", err.Error())
-		}
-		return responseData, nil
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		readError = t.Send(ctx, &reqmessage)
 	}
 
-	log.Info(string(jsonResponseData))
-	if err != nil {
-		return nil, fmt.Errorf("http invocation failed %s, status code %v", err.Error(), response.StatusCode)
+	if readError != nil {
+		actulaResponse.ResponseMessage = string(readError.Error())
+		databytes, _ := json.Marshal(actulaResponse)
+		err = json.Unmarshal(databytes, &readresponseData)
+		if err != nil {
+			return nil, fmt.Errorf("cannot unmarshall response %s", err.Error())
+		}
+
+	} else {
+		actulaResponse.ResponseMessage += " /Published message to " + objectType + " : " + entityName + " successfully / "
+		databytes, _ := json.Marshal(actulaResponse)
+		err = json.Unmarshal(databytes, &readresponseData)
+		log.Info(readresponseData)
 	}
-	return
+	return readresponseData, readError
+
 }
 
 // Call makes an HTTP API call into the Zoho System
@@ -247,51 +253,6 @@ func (connection *Connection) Call(objectType string, objectName string, inputDa
 	return nil, fmt.Errorf("all invocation attempts exhausted")
 }
 
-func (connection *Connection) refreshAccessToken() (err error) {
-
-	if connection.docsObject == nil {
-		return fmt.Errorf("no docs metadata")
-	}
-
-	request, err := http.NewRequest("POST", connection.tokenURL, nil)
-	if err != nil {
-		return fmt.Errorf("cannot create authenitcation request: %v", err)
-	}
-
-	request.Header.Set("User-Agent", "Web Integrator")
-	request.Header.Set("Content-Type", "application/json")
-
-	queryParams := url.Values{
-		"grant_type":    {"refresh_token"},
-		"client_id":     {connection.ClientID},
-		"client_secret": {connection.ClientSecret},
-		"refresh_token": {connection.refreshToken},
-	}
-
-	request.URL.RawQuery = queryParams.Encode()
-	resp, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return fmt.Errorf("invocation error: %v", err)
-	}
-	defer resp.Body.Close()
-
-	var responseData interface{}
-	respBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("cannot convert response %v", err)
-	}
-
-	if err := json.Unmarshal(respBytes, &responseData); err != nil {
-		return fmt.Errorf("cannot unmarshal response %v", err)
-	}
-
-	if responseData.(map[string]interface{})["error"] != nil {
-		return fmt.Errorf("%s", responseData.(map[string]interface{})["error"].(string))
-	}
-	connection.accessToken = responseData.(map[string]interface{})["access_token"].(string)
-	return
-}
-
 func getBody(content interface{}) (io.Reader, error) {
 	var reqBody io.Reader
 	switch content.(type) {
@@ -305,4 +266,43 @@ func getBody(content interface{}) (io.Reader, error) {
 		reqBody = bytes.NewBuffer(b)
 	}
 	return reqBody, nil
+}
+func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	qm := ns.NewQueueManager()
+	qe, err := qm.Get(ctx, queueName)
+	if err != nil {
+		return nil, err
+	}
+	var q *servicebus.Queue
+	var queueError error
+	if qe != nil {
+		q, queueError = ns.NewQueue(ctx, queueName)
+	} else {
+		q = nil
+		queueError = errors.New("Could not find the specified Queue")
+	}
+	return q, queueError
+}
+
+func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	tm := ns.NewTopicManager()
+	te, err := tm.Get(ctx, topicName)
+	if err != nil {
+		return nil, err
+	}
+	var t *servicebus.Topic
+	var topicError error
+	if te != nil {
+		t, topicError = ns.NewTopic(ctx, topicName)
+	} else {
+		t = nil
+		topicError = errors.New("Could not find the specified Topic")
+	}
+	return t, topicError
 }

@@ -29,24 +29,7 @@
         "name": "Description",
         "visible": true
       }
-    },
-    {
-      "name": "sasFlag",
-      "type": "string",
-      "required": true,
-      "allowed": [
-          "Generate SAS token",
-          "Enter SAS token"         
-       ],
-      "value": "Generate SAS token",
-      "display": {
-        "name": "Select SAS Flag",
-        "type": "dropdown",
-        "selection": "single",
-        "description": "Select the option to procure SAS token",
-        "visible": true
-      }
-    },
+    },    
     {
       "name": "resourceURI",
       "type": "string",
@@ -76,35 +59,7 @@
           "type": "password",
           "encryptable":true
       }
-    },
-    {
-      "name": "expiryDate",
-      "type": "string",
-      "required": true,
-      "display": {
-        "name": "Expirty Time",
-        "visible": true
-      }
-    },
-    {
-      "name": "sasToken",
-      "type": "string",
-      "required": true,
-      "display": {
-        "name": "SAS Token",
-        "visible": false,
-        "encryptable":true
-      }
-    },
-    {
-      "name": "WI_STUDIO_OAUTH_CONNECTOR_INFO",
-      "type": "string",
-      "required": true,
-      "display": {
-        "visible": false,
-        "encryptable":true
-      }
-    },
+    },       
     {
       "name": "configProperties",
       "type": "string",
