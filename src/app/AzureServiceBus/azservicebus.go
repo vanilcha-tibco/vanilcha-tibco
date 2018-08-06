@@ -279,7 +279,7 @@ func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, er
 	var q *servicebus.Queue
 	var queueError error
 	if qe != nil {
-		q, queueError = ns.NewQueue(ctx, queueName)
+		q, queueError = ns.NewQueue(queueName)
 	} else {
 		q = nil
 		queueError = errors.New("Could not find the specified Queue")

@@ -177,7 +177,7 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
         .addBody('<entry xmlns="http://www.w3.org/2005/Atom"><content type="application/xml"><QueueDescription xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect"><MaxDeliveryCount>10</MaxDeliveryCount></QueueDescription></content></entry>')
         .send()
         .switchMap((response: Response) => {
-            if ((!response.status.toString().startsWith("5")) && (response.status !== 401 || response.status.toString().startsWith("2"))) {
+            if (response.status !== 502 && response.status !== 401)  {
                 for (let i = 0; i < context.settings.length; i++) {
                     if (context.settings[i].name === "DocsMetadata") {
                    context.settings[i].value = JsonSchema.Types.schemaDoc();
@@ -199,7 +199,7 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                 .catch( (response => {
                     if (response instanceof Response) {
                     if (response.status) {
-                    if ((!response.status.toString().startsWith("5")) && (response.status !== 401 || response.status.toString().startsWith("2"))) {
+                    if (response.status !== 502 && response.status !== 401) {
                         for (let i = 0; i < context.settings.length; i++) {
                              if (context.settings[i].name === "DocsMetadata") {
                             context.settings[i].value = JsonSchema.Types.schemaDoc();
