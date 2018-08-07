@@ -63,7 +63,7 @@ package-lock.json
 
 wi-studio
 staging/**
-
+contribution/*
 contribution.zip
 
 src/app/github.com/*
