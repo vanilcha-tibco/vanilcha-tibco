@@ -15,6 +15,7 @@ function contrib::stage {
     
     sources="src/app/AzureServiceBus/connector
     src/app/AzureServiceBus/activity
+    src/app/AzureServiceBus/vendor
     src/app/AzureServiceBus/azservicebus.go
     scripts/tci-deployer.sh
     scripts/properties.sh
@@ -34,10 +35,12 @@ function tci::stage {
     #trap "$(which rm) -rf $tempdir" EXIT
     mkdir -p ${tempdir}/activity/AzureServiceBus
     mkdir -p ${tempdir}/connector/AzureServiceBus
+    mkdir -p ${tempdir}/vendor/AzureServiceBus
     
     cp -r src/app/AzureServiceBus/activity/* ${tempdir}/activity/AzureServiceBus
     cp src/app/AzureServiceBus/azservicebus.go ${tempdir}/activity/AzureServiceBus
     cp -r src/app/AzureServiceBus/connector/connection/* ${tempdir}/connector/AzureServiceBus
+    cp -r src/app/AzureServiceBus/vendor/* ${tempdir}/vendor/AzureServiceBus
 }
 
 function contrib::zip {
