@@ -51,20 +51,7 @@
     {
       "name": "input",
       "type": "complex_object"
-    },
-    {
-      "name": "body",
-      "type": "complex_object",
-      "required": true,
-      "display": {
-      "name":"Request Schema",
-      "type":"texteditor",
-      
-      "syntax":"json",
-      
-      "mappable": true
-      }
-      }
+    }    
   ],
 
   "outputs": [{

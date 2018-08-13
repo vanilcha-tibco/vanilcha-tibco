@@ -15,6 +15,7 @@ function contrib::stage {
     
     sources="src/app/AzureServiceBus/connector
     src/app/AzureServiceBus/activity
+    src/app/AzureServiceBus/trigger
     src/app/AzureServiceBus/vendor
     src/app/AzureServiceBus/azservicebus.go
     scripts/tci-deployer.sh
@@ -35,11 +36,13 @@ function tci::stage {
     #trap "$(which rm) -rf $tempdir" EXIT
     mkdir -p ${tempdir}/activity/AzureServiceBus
     mkdir -p ${tempdir}/connector/AzureServiceBus
+    mkdir -p ${tempdir}/trigger/AzureServiceBus
     mkdir -p ${tempdir}/vendor/AzureServiceBus
     
     cp -r src/app/AzureServiceBus/activity/* ${tempdir}/activity/AzureServiceBus
     cp src/app/AzureServiceBus/azservicebus.go ${tempdir}/activity/AzureServiceBus
     cp -r src/app/AzureServiceBus/connector/connection/* ${tempdir}/connector/AzureServiceBus
+    cp -r src/app/AzureServiceBus/trigger/* ${tempdir}/trigger/AzureServiceBus
     cp -r src/app/AzureServiceBus/vendor/* ${tempdir}/vendor/AzureServiceBus
 }
 
@@ -222,7 +225,8 @@ function tciZip {
     tci::replaceTsCategory
     tci::adjustGoPaths
     cd ..
-    node scripts/jsonUpdate.js --file wi-plugins/activity/AzureServiceBus/query/activity.json --category AzureServiceBus --ref git.tibco.com/git/product/ipaas/wi-plugins.git/activity/AzureServiceBus/query
+    node scripts/jsonUpdate.js --file wi-plugins/activity/AzureServiceBus/publish/activity.json --category AzureServiceBus --ref git.tibco.com/git/product/ipaas/wi-plugins.git/activity/AzureServiceBus/query
+    node scripts/jsonUpdate.js --file wi-plugins/trigger/AzureServiceBus/query/activity.json --category AzureServiceBus --ref git.tibco.com/git/product/ipaas/wi-plugins.git/activity/AzureServiceBus/query
     node scripts/jsonUpdate.js --file wi-plugins/connector/AzureServiceBus/connector.json --smallicon icons/ic-AzureServiceBus.png --largeicon icons/ic-AzureServiceBus@2x.png --category AzureServiceBus --ref git.tibco.com/git/product/ipaas/wi-plugins.git/connector/AzureServiceBus
     
     #       // obj.display.smallIcon = "icons/ic-zoho.png";

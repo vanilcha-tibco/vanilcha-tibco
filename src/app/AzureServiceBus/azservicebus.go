@@ -10,7 +10,9 @@ import (
 	"os"
 	"time"
 
+	"git.tibco.com/git/product/ipaas/wi-contrib.git/connection/generic"
 	servicebus "github.com/Azure/azure-service-bus-go"
+	"github.com/TIBCOSoftware/flogo-lib/core/data"
 	"github.com/TIBCOSoftware/flogo-lib/logger"
 )
 
@@ -33,6 +35,7 @@ type (
 	}
 )
 type (
+	// PublishRequest data structure
 	PublishRequest struct {
 		QueueName        string           `json:"queueName"`
 		TopicName        string           `json:"topicName"`
@@ -47,21 +50,25 @@ type (
 		CorrelationId    string         `json:"CorrelationId"`
 		ForcePersistence bool           `json:"ForcePersistence"`
 		Label            string         `json:"Label"`
-		MessageId        string         `json:"MessageId"`
 		PartitionKey     string         `json:"PartitionKey"`
 		ReplyTo          string         `json:"ReplyTo"`
 		ReplyToSessionId string         `json:"ReplyToSessionId"`
 		SessionId        string         `json:"SessionId"`
 		To               string         `json:"To"`
-		ViaPartitionKey  string         `json:"ViaPartitionKey"`
 		TimeToLive       *time.Duration `json:"TimeToLive"`
-		DeliveryCount    uint32         `json:"DeliveryCount"`
 	}
 )
 
 //PublishResponse datastructure for storing BrokerProperties
 type PublishResponse struct {
 	ResponseMessage string `json:"responseMessage"`
+}
+
+// ServiceBusClientConfig to be used by util methods for getting connection config in Service Bus Triggers
+type ServiceBusClientConfig struct {
+	AuthorizationRuleName string
+	PrimarysecondaryKey   string
+	ResourceURI           string
 }
 
 var log = logger.GetLogger("az-servicebus")
@@ -150,9 +157,6 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	if publishInput.BrokerProperties.PartitionKey != "" {
 		reqSysProperties.PartitionKey = &publishInput.BrokerProperties.PartitionKey
 	}
-	if publishInput.BrokerProperties.ViaPartitionKey != "" {
-		reqSysProperties.ViaPartitionKey = &publishInput.BrokerProperties.ViaPartitionKey
-	}
 	reqmessage := servicebus.Message{}
 	if publishInput.BrokerProperties.ContentType != "" {
 		reqmessage.ContentType = publishInput.BrokerProperties.ContentType
@@ -160,10 +164,12 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	if publishInput.BrokerProperties.CorrelationId != "" {
 		reqmessage.CorrelationID = publishInput.BrokerProperties.CorrelationId
 	}
-	reqmessage.Data = []byte(inputparamtersmap["messageString"].(string))
-	if publishInput.BrokerProperties.MessageId != "" {
-		reqmessage.ID = publishInput.BrokerProperties.MessageId
+	if inputparamtersmap["messageString"] == nil {
+		reqmessage.Data = []byte("")
+	} else {
+		reqmessage.Data = []byte(inputparamtersmap["messageString"].(string))
 	}
+
 	if publishInput.BrokerProperties.Label != "" {
 		reqmessage.Label = publishInput.BrokerProperties.Label
 	}
@@ -175,9 +181,6 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	}
 	if publishInput.BrokerProperties.TimeToLive != nil {
 		reqmessage.TTL = publishInput.BrokerProperties.TimeToLive
-	}
-	if publishInput.BrokerProperties.DeliveryCount != 0 {
-		reqmessage.DeliveryCount = publishInput.BrokerProperties.DeliveryCount
 	}
 	if (reqSysProperties != servicebus.SystemProperties{}) {
 		reqmessage.SystemProperties = &reqSysProperties
@@ -194,8 +197,14 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 
 		q, err := getQueue(ns, entityName)
 		if err != nil {
-			fmt.Printf("failed to build a new queue named %q\n", entityName)
-			os.Exit(1)
+			if err != nil {
+				fmt.Printf("failed to fetch queue named %q\n", entityName)
+				actulaResponse.ResponseMessage = string(err.Error())
+				databytes, _ := json.Marshal(actulaResponse)
+				readError = err
+				err = json.Unmarshal(databytes, &readresponseData)
+				return readresponseData, readError
+			}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
@@ -211,9 +220,14 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 		}
 		t, err := getTopic(ns, entityName)
 		if err != nil {
-			fmt.Printf("failed to build a new queue named %q\n", entityName)
-			os.Exit(1)
+			fmt.Printf("failed to fetch topic named %q\n", entityName)
+			actulaResponse.ResponseMessage = string(err.Error())
+			databytes, _ := json.Marshal(actulaResponse)
+			readError = err
+			err = json.Unmarshal(databytes, &readresponseData)
+			return readresponseData, readError
 		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		readError = t.Send(ctx, &reqmessage)
@@ -305,4 +319,24 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 		topicError = errors.New("Could not find the specified Topic")
 	}
 	return t, topicError
+
+}
+
+// BuildConfigurationFromConnection is a util method to be used by Triggers for getting
+// ConnectionConfig details in Trigger runtime
+func BuildConfigurationFromConnection(connection interface{}) (*ServiceBusClientConfig, error) {
+
+	conn, err := generic.NewConnection(connection)
+	if err != nil {
+		return nil, errors.New("Failed to load Kafaka client configuration")
+	}
+
+	connectionConfig := &ServiceBusClientConfig{}
+
+	connectionConfig.AuthorizationRuleName, _ = data.CoerceToString(conn.GetSetting("authorizationRuleName"))
+	connectionConfig.PrimarysecondaryKey, _ = data.CoerceToString(conn.GetSetting("primarysecondaryKey"))
+	connectionConfig.ResourceURI, _ = data.CoerceToString(conn.GetSetting("resourceURI"))
+
+	return connectionConfig, nil
+
 }

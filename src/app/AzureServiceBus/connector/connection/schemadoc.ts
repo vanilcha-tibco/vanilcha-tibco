@@ -2,9 +2,61 @@ export namespace JsonSchema {
 
   export class Types {
 
-    public static schemaDoc = () => `{      
+    public static schemaDoc = () => `{
       "entityTypes":["Queue","Topic"],
       "paths": {
+        "QueueReceive":{
+          "summary": "Queue Receiver",
+          "action": "QueueReceive",
+          "output": {
+                "$id": "http://example.com/example.json",
+                "type": "object",
+                "definitions": {},
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": false,
+                "properties": {
+                  "messageString": {"type": "string"},
+                  "brokerProperties": {
+                    "type": "object",
+                    "properties": {
+                        "ContentType": { "type" : "string"},
+                        "CorrelationId": {"type" : "string"},
+                        "Label": {"type" : "string"},
+                        "PartitionKey": {"type" : "string"},
+                        "ReplyTo": {"type" : "string"},
+                        "TimeToLive": { "type" : "integer"},
+                        "To": {"type" : "string"}
+                    }
+                  }
+                }
+            }
+        },
+        "TopicSubscribe":{
+          "summary": "Topic Subscriber",
+          "action": "TopicSubscribe",
+          "output": {
+                "$id": "http://example.com/example.json",
+                "type": "object",
+                "definitions": {},
+                "$schema": "http://json-schema.org/draft-07/schema#",
+                "additionalProperties": false,
+                "properties": {
+                  "messageString": {"type": "string"},
+                  "brokerProperties": {
+                    "type": "object",
+                    "properties": {
+                        "ContentType": { "type" : "string"},
+                        "CorrelationId": {"type" : "string"},
+                        "Label": {"type" : "string"},
+                        "PartitionKey": {"type" : "string"},
+                        "ReplyTo": {"type" : "string"},
+                        "TimeToLive": { "type" : "integer"},
+                        "To": {"type" : "string"}
+                    }
+                  }
+                }
+            }
+        },
         "Queue": {
           "post": {
             "summary": "Publish Message to Queue",
@@ -22,15 +74,13 @@ export namespace JsonSchema {
                   "brokerProperties": {"type": "object", "properties": {
                       "ContentType": { "type" : "string"},
                       "CorrelationId": {"type" : "string"},
-                      "TimeToLive": { "type" : "integer", "minimum": 0},
-                      "DeliveryCount": { "type" : "integer", "minimum": 0},                     
                       "Label": {"type" : "string"},
-                      "MessageId": {"type" : "string"},
                       "PartitionKey": {"type" : "string"},
-                      "ReplyTo": {"type" : "string"},                      
-                      "To": {"type" : "string"},
-                      "ViaPartitionKey": {"type" : "string"}
-                  }  }
+                      "ReplyTo": {"type" : "string"},
+                      "TimeToLive": { "type" : "integer", "minimum": 0},
+                      "To": {"type" : "string"}
+                  }
+                }
               },
                 "required": [
                   "queueName",
@@ -43,9 +93,9 @@ export namespace JsonSchema {
                 "definitions": {},
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "additionalProperties": false,
-                "properties": {                  
+                "properties": {
                   "responseMessage": {"type": "string" }
-          }
+                }
               }
             }
           }
@@ -67,14 +117,11 @@ export namespace JsonSchema {
                   "brokerProperties": {"type": "object", "properties": {
                       "ContentType": { "type" : "string"},
                       "CorrelationId": {"type" : "string"},
-                      "TimeToLive": { "type" : "integer", "minimum": 0},
-                      "DeliveryCount": { "type" : "integer", "minimum": 0},                     
                       "Label": {"type" : "string"},
-                      "MessageId": {"type" : "string"},
                       "PartitionKey": {"type" : "string"},
-                      "ReplyTo": {"type" : "string"},                      
-                      "To": {"type" : "string"},
-                      "ViaPartitionKey": {"type" : "string"}
+                      "ReplyTo": {"type" : "string"},
+                      "TimeToLive": { "type" : "integer", "minimum": 0},
+                      "To": {"type" : "string"}
                   }  }
               },
                 "required": [
@@ -88,13 +135,13 @@ export namespace JsonSchema {
                 "definitions": {},
                 "$schema": "http://json-schema.org/draft-07/schema#",
                 "additionalProperties": false,
-                "properties": {                 
+                "properties": {
                   "responseMessage": {"type": "string" }
           }
               }
             }
           }
-        }   
+        }
       }
     }`
   }
