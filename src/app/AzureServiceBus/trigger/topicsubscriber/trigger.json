@@ -1,0 +1,79 @@
+{
+    "name": "azservicebus-topicsubscriber-trigger",
+    "type": "flogo:trigger",
+    "title": "AzureServiceBus TopicSubscriber",
+    "version": "1.0.0",
+    "author": "TIBCO Software Inc.",
+    "display": {
+      "category": "AzureServiceBus",
+      "smallIcon": "icons/azservicebus_topicsubscriber.png",
+      "largeIcon": "icons/azservicebus_topicsubscriber@2x.png",
+      "wizard": [
+        "Choose Connection"
+      ]
+    },
+    "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/trigger/topicsubscriber",
+    "settings": [
+      {
+        "name": "azservicebusConnection",
+        "type": "object",
+        "required": true,
+        "display": {
+          "name": "AzureServiceBus Connection",
+          "description": "Choose a AzureServiceBus Connection",
+          "type": "connection"
+        },
+        "wizard": {
+          "type": "dropdown",
+          "selection": "single",
+          "step": "Choose Connection"
+        },
+        "allowed": []
+      }
+    ],
+    "handler": {
+      "settings": [
+        {
+          "name": "topic",
+          "type": "string",
+          "required": true,
+          "display": {
+            "name": "Topic",
+            "description": "Name of the Topic to subscribe to"
+          }
+        },
+        {
+          "name": "subscriptionName",
+          "type": "string",
+          "required": true,
+          "display": {
+            "name": "Subscription Name",
+            "description": "Name of the Topic Subscription"
+          }
+        },
+        {
+          "name": "valueType",
+          "type": "string",
+          "display": {
+            "name": "Value Deserializer",
+            "description": "Type of record value to be received",
+            "visible": false
+          },
+          "allowed": [
+            "String",
+            "JSON"
+          ],
+          "value": "String"
+        }
+      ]
+    },
+    "outputs": [{
+      "name": "output",
+      "type": "complex_object"
+    }],
+    "actions": [
+      {
+        "name": "Finish"
+      }
+    ]
+  }

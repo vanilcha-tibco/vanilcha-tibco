@@ -1,0 +1,83 @@
+{
+    "name": "azservicebus-queuereceiver-trigger",
+    "type": "flogo:trigger",
+    "title": "AzureServiceBus QueueReceiver",
+    "version": "1.0.0",
+    "author": "TIBCO Software Inc.",
+    "display": {
+      "category": "AzureServiceBus",
+      "smallIcon": "icons/azservicebus_queuereceiver.png",
+      "largeIcon": "icons/azservicebus_queuereceiver@2x.png",
+      "wizard": [
+        "Choose Connection"
+      ]
+    },
+    "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/trigger/queuereceiver",
+    "settings": [
+      {
+        "name": "azservicebusConnection",
+        "type": "object",
+        "required": true,
+        "display": {
+          "name": "AzureServiceBus Connection",
+          "description": "Choose a AzureServiceBus Connection",
+          "type": "connection"
+        },
+        "wizard": {
+          "type": "dropdown",
+          "selection": "single",
+          "step": "Choose Connection"
+        },
+        "allowed": []
+      }
+    ],
+    "handler": {
+      "settings": [
+        {
+          "name": "queue",
+          "type": "string",
+          "required": true,
+          "display": {
+            "name": "Queue",
+            "description": "Name of the Queue to keep receiving message from"
+          }
+        },
+        {
+          "name": "receiveMode",
+          "type": "string",
+          "display": {
+            "name": "Receive Mode",
+            "description": "Specify mode in which Service Bus receives messages"
+          },
+          "allowed": [
+            "PeekLock",
+            "ReceiveAndDelete"
+          ],
+          "value": "PeekLock"
+        },
+        {
+          "name": "valueType",
+          "type": "string",
+          "display": {
+            "name": "Value Deserializer",
+            "description": "Type of record value to be received",
+            "visible": false
+          },
+          "allowed": [
+            "String",
+            "JSON"
+          ],
+          "value": "String"
+        }
+      ]
+    },
+    "outputs": [{
+      "name": "output",
+      "type": "complex_object"
+    }],
+    "actions": [
+      {
+        "name": "Finish"
+      }
+    ]
+  }
