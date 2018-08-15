@@ -177,7 +177,11 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
         .addBody('<entry xmlns="http://www.w3.org/2005/Atom"><content type="application/xml"><QueueDescription xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect"><MaxDeliveryCount>10</MaxDeliveryCount></QueueDescription></content></entry>')
         .send()
         .switchMap((response: Response) => {
-            if (response.status !== 502 && response.status !== 401)  {
+            if (response.status  >= 500 || response.status === 401)  {
+                return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                    .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
+            }
+            else {
                 for (let i = 0; i < context.settings.length; i++) {
                     if (context.settings[i].name === "DocsMetadata") {
                    context.settings[i].value = JsonSchema.Types.schemaDoc();
@@ -189,32 +193,29 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                     authData: {}
                 };
                 return Observable.of(ActionResult.newActionResult().setResult(actionResult));
-            }
-            else {
-                return Observable.of(ActionResult.newActionResult().setSuccess(false)
-                    .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
                 }
         });
                 })
                 .catch( (response => {
                     if (response instanceof Response) {
                     if (response.status) {
-                    if (response.status !== 502 && response.status !== 401) {
-                        for (let i = 0; i < context.settings.length; i++) {
-                             if (context.settings[i].name === "DocsMetadata") {
-                            context.settings[i].value = JsonSchema.Types.schemaDoc();
-                        }
-                        }
-                        let actionResult = {
-                            context: context,
-                            authType: AUTHENTICATION_TYPE.BASIC,
-                            authData: {}
-                        };
-                        return Observable.of(ActionResult.newActionResult().setResult(actionResult));
+                    if (response.status >= 500 || response.status === 401) {
+                        return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                        .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
+
                     }
                         else {
-                    return Observable.of(ActionResult.newActionResult().setSuccess(false)
-                        .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
+                            for (let i = 0; i < context.settings.length; i++) {
+                                if (context.settings[i].name === "DocsMetadata") {
+                               context.settings[i].value = JsonSchema.Types.schemaDoc();
+                           }
+                           }
+                           let actionResult = {
+                               context: context,
+                               authType: AUTHENTICATION_TYPE.BASIC,
+                               authData: {}
+                           };
+                           return Observable.of(ActionResult.newActionResult().setResult(actionResult));
                     }
                 }
                 else {
