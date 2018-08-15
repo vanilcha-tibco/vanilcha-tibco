@@ -110,13 +110,13 @@ func (t *SBTopicSubscriberTrigger) Start() error {
 		}
 		subsc, err := getSubscription(ns, trcvr.subscriptionName, topic)
 		if err != nil {
-			log.Error("failed to build a new subscription named %s due to error: %s", trcvr.subscriptionName, err.Error())
+			log.Error("Failed to build a new subscription named %s due to error: %s", trcvr.subscriptionName, err.Error())
 			return err
 		}
 		trcvr.topic = topic
 		trcvr.subscription = subsc
-		// Start polling on Go routine
-		trcvr.subscribe()
+		// Start subscribing on a separate Go routine so as to not block engine
+		go trcvr.subscribe()
 	}
 	log.Infof("Trigger - %s  started", t.config.Name)
 	return nil
@@ -185,7 +185,6 @@ func (trcvr *TopicSubscriber) subscribe() {
 	select {
 	case <-trcvr.done:
 		log.Debugf("Subscription to Topic [%s] is stopped as the Trigger was stopped ", trcvr.topicName)
-		// Exit
 		return
 	}
 
@@ -201,7 +200,6 @@ func (trcvr *TopicSubscriber) processMessage(msg *servicebus.Message) error {
 		deserVal := trcvr.valueType
 		if deserVal == "String" {
 			text := string(msg.Data)
-			log.Infof("Message is [%s]", text)
 			outputRoot["messageString"] = string(text)
 			brokerProperties["ContentType"] = msg.ContentType
 			brokerProperties["CorrelationId"] = msg.CorrelationID

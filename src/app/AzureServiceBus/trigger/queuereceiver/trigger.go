@@ -92,7 +92,6 @@ func (t *SBQueueReceiverTrigger) Metadata() *trigger.Metadata {
 
 // Start implements trigger.Trigger.Start
 func (t *SBQueueReceiverTrigger) Start() error {
-
 	log.Infof("Starting Trigger - %s", t.config.Name)
 
 	for _, qrcvr := range t.queueReceivers {
@@ -108,8 +107,8 @@ func (t *SBQueueReceiverTrigger) Start() error {
 			return err
 		}
 		qrcvr.q = q
-		// Start polling on Go routine
-		qrcvr.listen()
+		// Start polling on a separate Go routine so as to not block engine
+		go qrcvr.listen()
 	}
 	log.Infof("Trigger - %s  started", t.config.Name)
 	return nil
@@ -135,12 +134,12 @@ func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*
 	}
 	if receiveMode == "ReceiveAndDelete" {
 		//fmt.Println("receiveMode for QueueReceiver is set to ReceiveAndDelete")
-		log.Debug("using receiveMode ReceiveAndDelete")
+		log.Debugf("Using receiveMode ReceiveAndDelete to create queue %s", queueName)
 		q, err := ns.NewQueue(queueName, servicebus.QueueWithReceiveAndDelete())
 		return q, err
 	}
 	//fmt.Println("receiveMode for QueueReceiver is PeekLock")
-	log.Debug("using receiveMode PeekLock")
+	log.Debugf("Using receiveMode PeekLock to create queue %s", queueName)
 	q, err := ns.NewQueue(queueName)
 	return q, err
 
@@ -188,7 +187,6 @@ func (qrcvr *QueueReceiver) processMessage(msg *servicebus.Message) error {
 		deserVal := qrcvr.valueType
 		if deserVal == "String" {
 			text := string(msg.Data)
-			log.Infof("Message is [%s]", text)
 			outputRoot["messageString"] = string(text)
 			brokerProperties["ContentType"] = msg.ContentType
 			brokerProperties["CorrelationId"] = msg.CorrelationID
