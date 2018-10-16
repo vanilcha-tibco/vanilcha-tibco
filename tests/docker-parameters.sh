@@ -1,0 +1,3 @@
+IMAGE=wi-azservicebus-tests
+
+
