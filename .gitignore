@@ -71,5 +71,3 @@ src/app/golang.org/*
 
 yarn.lock
 yarn-error.log
-
-src/app/AzureServiceBus/vendor/github.com/Azure/azure-service-bus-go/*
