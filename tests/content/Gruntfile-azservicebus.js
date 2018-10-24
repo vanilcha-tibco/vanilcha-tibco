@@ -12,7 +12,7 @@ module.exports = function (grunt) {
                     keepAlive: false,
                     configFile: "./WI/config/protractorwiConf.js",
                     args: {
-                        specs: ['./connectors/azservicebus/content/tests/wi_azservicebus.js']
+                        specs: ['./connectors/azservicebus/content/tests/wi_AzureServiceBus.js']
                     }
                 }
             },
@@ -22,7 +22,7 @@ module.exports = function (grunt) {
                     keepAlive: false,
                     configFile: "./WI/config/protractorwiConf.js",
                     args: {
-                        specs: ['./connectors/azservicebus/content/tests/wi_azservicebus.js']
+                        specs: ['./connectors/azservicebus/content/tests/wi_AzureServiceBus.js']
                     }
                 }
             }
