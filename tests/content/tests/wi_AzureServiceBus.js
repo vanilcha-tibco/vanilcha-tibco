@@ -24,7 +24,7 @@ describe("Flogo AzureServiceBus", function () {
 
         browser.sleep(10000);
         //baseAzureServiceBus.connectionModalMethods().addServiceBusConnection("AzureServiceBusConnection","Tibco Azure Service Bus Connection","ServicebusQA001","AuthRule","eFxVfMG/8ssXCmm9BQFuEymrVnYpFvJWTxkr0nuXPQw=");
-        //baseAzureServiceBus.connectionModalMethods().addConnection();
+        baseAzureServiceBus.connectionModalMethods().addConnection();
         browser.sleep(5000);
 
 
