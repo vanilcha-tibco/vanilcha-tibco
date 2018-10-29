@@ -1,5 +1,5 @@
 /**
- * Created by vpurohit on 8/21/18.
+ * Created by Krishna Chaitanya Guttikonda on 8/21/18.
  */
 
 var baseAzureServiceBus = function () {
@@ -54,6 +54,6 @@ var baseAzureServiceBus = function () {
         operation_Delete_Subscription: "Delete Subscription",
         operation_Get_Subscription: "Get Subscription"
     };
-
+    global.EC = protractor.ExpectedConditions
 };
 module.exports = new baseAzureServiceBus();

@@ -27,13 +27,67 @@ var PaletteMethods = function () {
         baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(newActivity);
     };*/
 
+
+
+    /* AzureServiceBus QueueReciever*/
+    this.createAzureQueueReciever = function (flowName, flowDescription, connection, QueueName) {
+        var that = this;
+        baseWI.createFlowWindowMethods().setBasicFlowDetails(flowName, flowDescription, baseWI.commonElements().connectionType.Trigger,
+            "AzureServiceBus QueueReceiver");
+        browser.sleep(5000);
+        //browser.wait(EC.presenceOf(that.createFlowWindowElements().resourcePath()), 5000,"REST trigger flow UI did not appear on UI")
+
+        browser.findElement(by.xpath("//select[@id='azservicebusConnection']")).sendKeys(connection);
+        browser.findElement(by.xpath("//select[@id='azservicebusConnection']")).click();
+
+        browser.sleep(2000);
+        browser.findElement(by.xpath("//button[@class='btn btn-primary']")).click();
+        browser.sleep(5000);
+
+        browser.wait(EC.elementToBeClickable(baseWI.appImplementationPageElements().nthFlowByName(flowName)), 60000);
+        baseWI.appImplementationPageMethods().clickFlowByName(flowName);
+        browser.sleep(10000);
+        browser.findElement(by.xpath("//div[contains(@class,'titleHelper flow-detail-diagram-node-draggable') and contains(text(),'AzureServiceBusQueueReceiver')]")).click();
+        browser.sleep(3000);
+        browser.findElement(by.xpath("//input[@id='queue']")).sendKeys(QueueName);
+        //browser.findElement(by.xpath("//input[@id='subscriptionName]")).sendKeys(SubscriptionName);
+        browser.sleep(5000);
+    };
+
+    //AzureServiceBus TopicSubscriberFlow
+    this.createAzureTopicSubscriber = function (flowName, flowDescription, connection, TopicName, SubscriptionName) {
+        var that = this;
+        baseWI.createFlowWindowMethods().setBasicFlowDetails(flowName, flowDescription, baseWI.commonElements().connectionType.Trigger,"AzureServiceBus TopicSubscriber");
+        browser.sleep(5000);
+        //browser.wait(EC.presenceOf(that.createFlowWindowElements().resourcePath()), 5000,"REST trigger flow UI did not appear on UI")
+
+        browser.findElement(by.xpath("//select[@id='azservicebusConnection']")).sendKeys(connection);
+        browser.findElement(by.xpath("//select[@id='azservicebusConnection']")).click();
+        browser.sleep(2000);
+        browser.findElement(by.xpath("//button[@class='btn btn-primary']")).click();
+        browser.sleep(5000);
+
+        browser.wait(EC.elementToBeClickable(baseWI.appImplementationPageElements().nthFlowByName(flowName)), 60000);
+        browser.sleep(10000);
+        baseWI.appImplementationPageMethods().clickFlowByName(flowName);
+        browser.sleep(10000);
+        browser.findElement(by.xpath("//div[contains(@class,'titleHelper flow-detail-diagram-node-draggable') and contains(text(),'AzureServiceBusTopicSubscriber')]")).click();
+        browser.sleep(3000);
+        browser.findElement(by.xpath("//input[@id='topic']")).sendKeys(TopicName);
+        browser.sleep(2000);
+        browser.findElement(by.xpath("//input[@id='subscriptionName']")).sendKeys(SubscriptionName);
+        browser.sleep(5000);
+    };
+
+
     this.addAzureServiceBusPublishActivity = function (newActivity) {
         browser.sleep(20000);
         browser.driver.findElement(by.xpath("//div[contains(@data-flogo-node-type, 'node_add')]")).click();
         browser.sleep(5000);
-        utilities.clickElement(PaletteElements.AzureServiceBusTab(), "AzureServiceBus Connection Name");
+        utilities.clickElement(PaletteElements.AzureServiceBusTab(), "AzureServiceBus");
         browser.sleep(5000);
-        baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(newActivity);
+        browser.driver.findElement(by.xpath(("//div[contains(@class, 'ta-type')]//div[contains(text(), 'AzureServiceBus Publish')]"))).click();
+        //baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(newActivity);
         browser.sleep(1000);
     };
 
@@ -94,6 +148,8 @@ var PaletteMethods = function () {
     this.clickQueueRecieverTrigger = function () {
         utilities.clickElement(AzureServiceBusPublishModalElements.queueRecieverTrigger(), "clicking on QueueReciever");
     }
+
+
 
 
     /**

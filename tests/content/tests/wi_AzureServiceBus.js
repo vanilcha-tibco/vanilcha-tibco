@@ -1,7 +1,6 @@
 /**
  * Created by KrishnaChaitanyaGuttikonda on 10/25/17.
  */
-
 var baseAzureServiceBus = require('./../baseAzureServiceBus.js');
 var azureServiceBusConnection = baseAzureServiceBus.connectionDetails;
 var azureServiceBusSettings = baseAzureServiceBus.connectorsConfig;
@@ -41,30 +40,30 @@ describe("Flogo AzureServiceBus", function () {
         var topicName = "topicName";
         var mesageString = "messageString";
 
-
-
-
-
-
-
-        baseWI.createAzureTopicSubscriber("AzureTopicSubscriber","AzureTopicSubscriberdescription","AzureServiceBusConnection","flogotopic4","test1");
-        baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.TopicSubscriber);
+        baseAzureServiceBus.AzureServiceBusPaletteMethods().createAzureTopicSubscriber("AzureTopicSubscriber","AzureTopicSubscriberdescription","AzureServiceBusConnection","flogotopic4","test1");
+        browser.driver.findElement(by.xpath("//div[contains(@data-flogo-node-type, 'node_add')]")).click();
+        browser.sleep(1000);
+        //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.LogMessage);
         var logMessage = 'string.concat("TopicSubscriberMessage:",$flow.output.messageString)';
-        baseWI.addAndConfigureLogMessage(baseWI.commonElements().activityType.TopicSubscriber,logMessage,baseWI.logMessageMethods().logLevelType.Info);
-        //baseWI.addAndConfigureLogMessage2("AzureServiceBusTopicSubscriber",logMessage, baseWI.commonElements().logLevelType.Info);
+        baseWI.addAndConfigureLogMessage("AzureServiceBusTopicSubscriber",logMessage, baseWI.commonElements().logLevelType.Info);
         browser.sleep(3000);
         baseWI.appImplementationPageMethods().clickBackButton();
         browser.sleep(6000);
-        baseWI.createAzureQueueReciever("AzureQueueReceiverSubscriber","AzureQueueReceiverdescription","AzureServiceBusConnection","flogoqueue4");
-        baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.QueueReceiver);
+
+
+
+        baseAzureServiceBus.AzureServiceBusPaletteMethods().createAzureQueueReciever("AzureQueueReceiverSubscriber","AzureQueueReceiverdescription","AzureServiceBusConnection","flogoqueue4");
+        browser.driver.findElement(by.xpath("//div[contains(@data-flogo-node-type, 'node_add')]")).click();
+        browser.sleep(1000);
+        //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.LogMessage);
         var logMessage = 'string.concat("QueueReceiverMessage:",$flow.output.messageString)';
-        baseWI.addAndConfigureLogMessage(baseWI.commonElements().activityType.QueueReceiver,logMessage,baseWI.logMessageMethods().logLevelType.Info);
-        //baseWI.addAndConfigureLogMessage2("AzureServiceBusTopicSubscriber",logMessage, baseWI.commonElements().logLevelType.Info);
+        baseWI.addAndConfigureLogMessage("AzureServiceBusQueueReceiver",logMessage, baseWI.commonElements().logLevelType.Info);
         browser.sleep(3000);
         baseWI.appImplementationPageMethods().clickBackButton();
         baseWI.pushAppAndVerify(appName);
         baseWI.appsHomePageMethods().navigateToApp(appName);
         browser.sleep(1000);
+
 
 
 
@@ -75,7 +74,7 @@ describe("Flogo AzureServiceBus", function () {
         baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity(baseWI.commonElements().activityType.AzureServiceBusPublish);
         //baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(baseWI.commonElements().activityType.AzureServiceBusPublish);
         browser.sleep(2000);
-        baseAzureServiceBus.AzureServiceBusPaletteMethods().setConnectionName("azureServiceBusConnection");
+        baseAzureServiceBus.AzureServiceBusPaletteMethods().setConnectionName("AzureServiceBusConnection");
         baseAzureServiceBus.AzureServiceBusPaletteMethods().setEntityType("Queue");
         browser.sleep(2000);
         baseAzureServiceBus.AzureServiceBusPaletteMethods().clickInputTab();
@@ -84,11 +83,10 @@ describe("Flogo AzureServiceBus", function () {
         browser.sleep(1000);
         baseWI.commonActivityMethods().mapperInput(queueName, queueNameValue);
         baseWI.commonActivityMethods().mapperInput(mesageString, messageStringValueQueue);
-        console.debug("completed entering QueueName");
-        baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity(baseWI.commonElements().activityType.AzureServiceBusPublish);
+        baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity("AzureServiceBus Publish");
         //baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(baseWI.commonElements().activityType.AzureServiceBusPublish);
         browser.sleep(2000);
-        baseAzureServiceBus.AzureServiceBusPaletteMethods().setConnectionName("azureServiceBusConnection");
+        baseAzureServiceBus.AzureServiceBusPaletteMethods().setConnectionName("AzureServiceBusConnection");
         baseAzureServiceBus.AzureServiceBusPaletteMethods().setEntityType("Topic");
         browser.sleep(2000);
         baseAzureServiceBus.AzureServiceBusPaletteMethods().clickInputTab();
@@ -97,10 +95,10 @@ describe("Flogo AzureServiceBus", function () {
         browser.sleep(1000);
         baseWI.commonActivityMethods().mapperInput(topicName, topicNameValue);
         baseWI.commonActivityMethods().mapperInput(mesageString, messageStringValueTopic);
-        console.debug("completed entering Topic");
         browser.sleep(2000);
         var logMessage = 'string.concat(string.concat("QueueMessageOnPublish:",$activity[AzureServiceBusPublish].output.responseMessage),string.concat("TopicMessageOnPublish:",$activity[AzureServiceBusPublish1].output.responseMessage))';
-        baseWI.addAndConfigureLogMessage(baseWI.commonElements().activityType.AzureServiceBusPublish1,logMessage,baseWI.logMessageMethods().logLevelType.Info);
+        baseWI.addAndConfigureLogMessage("AzureServiceBusPublish1",logMessage, baseWI.commonElements().logLevelType.Info);
+        //baseWI.addAndConfigureLogMessage(baseWI.commonElements().activityType.AzureServiceBusPublish1,logMessage,baseWI.logMessageMethods().logLevelType.Info);
         browser.sleep(2000);
         baseWI.appImplementationPageMethods().clickBackButton();
         baseWI.pushAppAndVerify(appName);
