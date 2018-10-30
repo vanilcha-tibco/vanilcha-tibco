@@ -11,7 +11,7 @@ describe("Flogo AzureServiceBus", function () {
 
     beforeAll(function () {
         baseWI.deleteAllApps();
-        //baseWI.deleteConnections(['AzureServiceBusConnection', 'testsalesforce', 'testMarketo', 'second_connection', 'sfConn1', 'edited_sf_conn', 'SQS Extensions', 'testSugarCRM', 'testZuora', 'testTcm']);
+        baseWI.deleteConnections('AzureServiceBusConnection');
 
     });
 
