@@ -1,5 +1,5 @@
 /**
- * Created by Krishna Chaitanya Guttikonda on 8/21/18.
+ * Created by vpurohit on 8/21/18.
  */
 
 var baseAzureServiceBus = function () {
@@ -24,7 +24,7 @@ var baseAzureServiceBus = function () {
 
     // BEGIN - Connection details used while creating a connection.
     this.connectionDetails = {
-        name: "azureServiceBusConnection",
+        name: "AzureServiceBusConnection",
         description: "Tibco azureServiceBusConnection",
         username: process.env.Zuora_username || "gkchaitu279@dispostable.com",
         password: process.env.Zuora_password || "$Tibco2018$",
