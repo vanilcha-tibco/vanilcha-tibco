@@ -1,4 +1,4 @@
 {
-    "name":"TIBCO Flogo connector for Microsoft Azure Service Bus",
-    "version":"1.0.0"
+    "name": "TIBCO Flogo connector for Microsoft Azure Service Bus",
+    "version": "1.1.0"
 }

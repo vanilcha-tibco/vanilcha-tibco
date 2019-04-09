@@ -3,22 +3,14 @@
   "version": "1.0.0",
   "license": "ISC",
   "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build --prod",
-    "test": "ng test",
-    "lint": "ng lint",
-    "e2e": "ng e2e",
-    "zip": "scripts/makezip.sh",
-    "contribNg": "scripts/deploy.sh contribZip",
-    "contrib": "sudo scripts/fe-cli.sh compile --prod false && sudo scripts/fe-cli.sh package",
-    "tcideploy": "scripts/deploy.sh tciZip",
-    "tcimovehyp": "scp wi-plugins.zip hyperion.na.tibco.com:/home/vbansal/dev/godev/src/git.tibco.com/git/product/ipaas",
+    "ng": "ng", 
+    "mochadocker": "docker run --rm -ti -e NODE_ENV=docker --entrypoint npm -v $PWD:/src reldocker.tibco.com/tci/tci-flogo-cli:latest run mocha",
+    "debug": "mocha -r ts-node/register src/tests/**/*.spec.ts --debug-brk --inspect --timeout 10000",
+    "mocha": "mocha -r ts-node/register src/tests/**/*.spec.ts --timeout 10000",
+    "contrib": "./fe-cli.sh compile --prod false && sudo scripts/deploy.sh && scripts/deploy.sh contrib::zip dist",
     "movesap": "scp contribution.zip sap-dev.na.tibco.com:/home/vbansal/dev/tci",
     "movehyp": "scp contribution.zip hyperion.na.tibco.com:/home/vbansal/dev/tci",
-    "echo": "echo ${npm_package_config_abc}",
-    "genSchema": "scripts/deploy.sh genSchema && node scripts/mtest.js > src/app/AzureServiceBus/connector/connection/schemadoc.ts",
-    "clean": "sudo rm -rf staging && sudo rm contribution.zip"
+    "clean": "sudo rm -rf dist && sudo rm contribution.zip"
   },
   "author": "TIBCO Software Inc.",
   "repository": {

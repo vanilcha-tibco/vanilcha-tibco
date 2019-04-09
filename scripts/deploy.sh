@@ -1,9 +1,5 @@
 #! /bin/bash
 
-function genSchema {
-    sed -i "/\$id/d" scripts/metadata/docsMetadata.json
-}
-
 
 function contrib::stage {
     tempdir=${1:-staging}
@@ -13,14 +9,13 @@ function contrib::stage {
     fi
     #trap "$(which rm) -rf $tempdir" EXIT
     
-    sources="src/app/AzureServiceBus/connector
-    src/app/AzureServiceBus/activity
-    src/app/AzureServiceBus/trigger
-    src/app/AzureServiceBus/vendor
-    src/app/AzureServiceBus/azservicebus.go
+    sources="src/app/PostgreSQL/activity
+    src/app/PostgreSQL/connector
+    src/app/PostgreSQL/vendor
+    src/app/PostgreSQL/postgres.go
     scripts/tci-deployer.sh
     scripts/properties.sh
-    src/app/AzureServiceBus/contribution.json"
+    src/app/PostgreSQL/contribution.json"
     
     for file in ${sources}
     do
@@ -34,16 +29,24 @@ function tci::stage {
     [ -d ${tempdir} ] && rm -rf ${tempdir} && mkdir ${tempdir}
     
     #trap "$(which rm) -rf $tempdir" EXIT
-    mkdir -p ${tempdir}/activity/AzureServiceBus
-    mkdir -p ${tempdir}/connector/AzureServiceBus
-    mkdir -p ${tempdir}/trigger/AzureServiceBus
-    mkdir -p ${tempdir}/vendor/AzureServiceBus
+    mkdir -p ${tempdir}/activity/postgres
+    mkdir -p ${tempdir}/connector/postgres
     
-    cp -r src/app/AzureServiceBus/activity/* ${tempdir}/activity/AzureServiceBus
-    cp src/app/AzureServiceBus/azservicebus.go ${tempdir}/activity/AzureServiceBus
-    cp -r src/app/AzureServiceBus/connector/connection/* ${tempdir}/connector/AzureServiceBus
-    cp -r src/app/AzureServiceBus/trigger/* ${tempdir}/trigger/AzureServiceBus
-    cp -r src/app/AzureServiceBus/vendor/* ${tempdir}/vendor/AzureServiceBus
+    cp -r src/app/postgres/activity/* ${tempdir}/activity/postgres
+    cp src/app/postgres/postgres.go ${tempdir}/activity/postgres
+    cp -r src/app/postgres/connector/connection/* ${tempdir}/connector/postgres
+}
+
+function contrib::filter {
+    tempdir=${1:-staging}
+    
+    if [ ! -d "${tempdir}" ]; then
+        echo "${tempdir} does not exist, aboring zip operation" >&2
+        exit 128
+    fi
+    
+    [ -e ${tempdir}/components ] && rm -rf ${tempdir}/components
+
 }
 
 function contrib::zip {
@@ -97,8 +100,8 @@ function contrib::transform {
 }
 
 function tci::replaceTsCategory {
-    replace='this.category = "AzureServiceBus"'
-    with='this.category = "AzureServiceBus"'
+    replace='this.category = "postgres"'
+    with='this.category = "postgres"'
     sources="$(find . \( -iname '*.ts' \))"
     
     for file in ${sources}
@@ -112,45 +115,10 @@ function tci::replaceTsCategory {
     done
 }
 
-## use like ../scripts/deploy.sh migrate AzureServiceBus '*.ts'
-
-function migrate {
-    local replace=$1
-    local with=$2
-    local extension="$3"
-    local dryrun=${4:-false}
-
-    [ $dryrun = true ] && echo "===>executing dryrun"
-    echo $extension
-    echo "migrating from $replace to $with"
-
-    sources="$(find . \( -iname "$extension" -not -path "./node_modules*" -not -path "./wi-studio*" -not -path "./scripts*" \) )"
-    for file in ${sources}
-    do
-        # replace within file first
-        echo migrating $file
-        for lineno in $( grep -n "$replace" $file | cut -d: -f1 )
-        do
-            echo "$lineno in $file"
-            [ $dryrun = false ] && sed -i "$lineno s/$replace/$with/" $file
-        done
-    done
-    # now change the file names to the new name
-    sources="$(find . \( -iname "$extension" \) | grep $replace)"
-    for file in ${sources}
-    do
-        echo -n renaming file $file
-        local renamed=$(echo $file | sed s/$replace/$with/)
-        echo " to $renamed"
-        [ $dryrun = false ] && mv $file $renamed
-        # now change the file name
-    done
-}
-
 function tci::adjustGoPaths {
     
-    replace='wi-azservicebus.git\/src\/app\/AzureServiceBus'
-    with='wi-azservicebus.git\/src\/app\/AzureServiceBus'
+    replace='wi-postgres.git\/src\/app\/postgres'
+    with='wi-postgres.git\/activity\/postgres'
     
     sources="$(find . \( -iname '*.go' \))"
     for file in ${sources}
@@ -159,8 +127,7 @@ function tci::adjustGoPaths {
         for lineno in $( grep -n "$replace" $file | cut -d: -f1 )
         do
             echo "$lineno in $file"
-            [ "$(uname -s)" == "Darwin" ] && sed -i "" "$lineno s/$replace/$with/" $file
-            [ "$(uname -s)" == "Linux" ] && sed -i "$lineno s/$replace/$with/" $file
+            sed -i "" "$lineno s/$replace/$with/" $file
         done
     done
     
@@ -169,8 +136,8 @@ function tci::adjustGoPaths {
 
 function contrib::adjustGoPaths {
     
-    replace='wi-azservicebus.git\/src\/app\/AzureServiceBus'
-    with='wi-azservicebus.git\/src\/app\/AzureServiceBus'
+    replace='wi-postgres.git\/src\/app\/postgres'
+    with='wi-postgres.git\/PostgreSQL'
     
     sources="$(find . \( -iname '*.go' \))"
     for file in ${sources}
@@ -184,25 +151,6 @@ function contrib::adjustGoPaths {
         done
     done
     
-}
-
-
-function contrib::copyDeployer {
-    tempdir=${1:-staging/AzureServiceBus}
-    
-    if [ ! -d "${tempdir}" ]; then
-        mkdir -p ${tempdir}
-    fi
-    #trap "$(which rm) -rf $tempdir" EXIT
-    
-    sources="scripts/tci-deployer.sh
-    scripts/properties.sh"
-    
-    for file in ${sources}
-    do
-        echo "copying file ${file} into ${tempdir} "
-        cp -r ${file} ${tempdir}
-    done
 }
 
 function contribZip {
@@ -225,12 +173,11 @@ function tciZip {
     tci::replaceTsCategory
     tci::adjustGoPaths
     cd ..
-    node scripts/jsonUpdate.js --file wi-plugins/activity/AzureServiceBus/publish/activity.json --category AzureServiceBus --ref git.tibco.com/git/product/ipaas/wi-plugins.git/activity/AzureServiceBus/query
-    node scripts/jsonUpdate.js --file wi-plugins/trigger/AzureServiceBus/query/activity.json --category AzureServiceBus --ref git.tibco.com/git/product/ipaas/wi-plugins.git/activity/AzureServiceBus/query
-    node scripts/jsonUpdate.js --file wi-plugins/connector/AzureServiceBus/connector.json --smallicon icons/ic-AzureServiceBus.png --largeicon icons/ic-AzureServiceBus@2x.png --category AzureServiceBus --ref git.tibco.com/git/product/ipaas/wi-plugins.git/connector/AzureServiceBus
+    node scripts/jsonUpdate.js --file wi-plugins/activity/postgres/query/activity.json --category postgres --ref git.tibco.com/git/product/ipaas/wi-plugins.git/activity/postgres/query
+    node scripts/jsonUpdate.js --file wi-plugins/connector/postgres/connector.json --smallicon icons/ic-postgres.png --largeicon icons/ic-postgres@2x.png --category postgres --ref git.tibco.com/git/product/ipaas/wi-plugins.git/connector/postgres
     
-    #       // obj.display.smallIcon = "icons/ic-zoho.png";
-    #   // obj.display.largeIcon = "icons/ic-zoho@2x.png"
+    #       // obj.display.smallIcon = "icons/ic-postgres.png";
+    #   // obj.display.largeIcon = "icons/ic-postgres@2x.png"
     
     tci::zip
 }

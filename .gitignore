@@ -59,15 +59,18 @@ testem.log
 # System Files
 .DS_Store
 Thumbs.db
-package-lock.json
 
 wi-studio
 staging/**
-contribution/*
+
 contribution.zip
-
-src/app/github.com/*
-src/app/golang.org/*
-
+src/app/github.com/
+src/app/golang.org/
 yarn.lock
-yarn-error.log
+artifacts/artifacts.zip
+
+.build.properties
+
+artifacts
+
+docs

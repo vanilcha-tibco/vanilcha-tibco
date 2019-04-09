@@ -2,7 +2,7 @@
     "name": "azservicebus-topicsubscriber-trigger",
     "type": "flogo:trigger",
     "title": "AzureServiceBus TopicSubscriber",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "author": "TIBCO Software Inc.",
     "display": {
       "category": "AzureServiceBus",

@@ -1,0 +1,3 @@
+[submodule "scripts/cicd"]
+	path = scripts/cicd
+	url = https://git.tibco.com/git/product/ipaas/wasp-cicd.git

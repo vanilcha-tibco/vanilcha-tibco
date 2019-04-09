@@ -1,1 +1,0 @@
-docker run --rm tibdocker.tibco.com/tci-test/tci-deployer:4863 runner > tci-deployer.sh
