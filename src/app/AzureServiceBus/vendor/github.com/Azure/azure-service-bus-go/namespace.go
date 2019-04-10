@@ -24,6 +24,7 @@ package servicebus
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 
 	"github.com/Azure/azure-amqp-common-go/auth"
@@ -44,12 +45,9 @@ const (
 	//`
 
 	// Version is the semantic version number
-	Version = "0.1.0"
+	Version = "0.4.0"
 
 	rootUserAgent = "/golang-service-bus"
-
-	// Megabytes is a helper for specifying MaxSizeInMegabytes and equals 1024, thus 5 GB is 5 * Megabytes
-	Megabytes = 1024
 )
 
 type (
@@ -59,10 +57,8 @@ type (
 		Name          string
 		TokenProvider auth.TokenProvider
 		Environment   azure.Environment
+		userAgent     string
 	}
-
-	// Handler is the function signature for any receiver of AMQP messages
-	Handler func(context.Context, *Message) DispositionAction
 
 	// NamespaceOption provides structure for configuring a new Service Bus namespace
 	NamespaceOption func(h *Namespace) error
@@ -83,6 +79,14 @@ func NamespaceWithConnectionString(connStr string) NamespaceOption {
 			return err
 		}
 		ns.TokenProvider = provider
+		return nil
+	}
+}
+
+// NamespaceWithUserAgent appends to the root user-agent value.
+func NamespaceWithUserAgent(userAgent string) NamespaceOption {
+	return func(ns *Namespace) error {
+		ns.userAgent = userAgent
 		return nil
 	}
 }
@@ -112,7 +116,7 @@ func (ns *Namespace) newConnection() (*amqp.Client, error) {
 		amqp.ConnProperty("version", Version),
 		amqp.ConnProperty("platform", runtime.GOOS),
 		amqp.ConnProperty("framework", runtime.Version()),
-		amqp.ConnProperty("user-agent", rootUserAgent),
+		amqp.ConnProperty("user-agent", ns.getUserAgent()),
 	)
 }
 
@@ -125,21 +129,21 @@ func (ns *Namespace) negotiateClaim(ctx context.Context, conn *amqp.Client, enti
 }
 
 func (ns *Namespace) getAMQPHostURI() string {
-	return "amqps://" + ns.Name + "." + ns.Environment.ServiceBusEndpointSuffix + "/"
+	return fmt.Sprintf("amqps://%s.%s/", ns.Name, ns.Environment.ServiceBusEndpointSuffix)
 }
 
 func (ns *Namespace) getHTTPSHostURI() string {
-	return "https://" + ns.Name + "." + ns.Environment.ServiceBusEndpointSuffix + "/"
+	return fmt.Sprintf("https://%s.%s/", ns.Name, ns.Environment.ServiceBusEndpointSuffix)
 }
 
 func (ns *Namespace) getEntityAudience(entityPath string) string {
 	return ns.getAMQPHostURI() + entityPath
 }
 
-// max provides an integer function for math.Max
-func max(a, b int) int {
-	if a > b {
-		return a
+func (ns *Namespace) getUserAgent() string {
+	userAgent := rootUserAgent
+	if ns.userAgent != "" {
+		userAgent = fmt.Sprintf("%s/%s", userAgent, ns.userAgent)
 	}
-	return b
+	return userAgent
 }

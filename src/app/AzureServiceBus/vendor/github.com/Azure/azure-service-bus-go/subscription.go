@@ -24,18 +24,11 @@ package servicebus
 
 import (
 	"context"
-	"encoding/xml"
-	"errors"
-	"io/ioutil"
-	"net/http"
+	"strings"
 	"sync"
-	"time"
 
 	"github.com/Azure/azure-amqp-common-go/log"
-	"github.com/Azure/azure-sdk-for-go/services/servicebus/mgmt/2017-04-01/servicebus"
-	"github.com/Azure/azure-service-bus-go/atom"
-	"github.com/Azure/go-autorest/autorest/date"
-	"github.com/Azure/go-autorest/autorest/to"
+	"pack.ag/amqp"
 )
 
 type (
@@ -45,230 +38,16 @@ type (
 	Subscription struct {
 		*entity
 		Topic             *Topic
-		receiver          *receiver
+		receiver          *Receiver
 		receiverMu        sync.Mutex
 		receiveMode       ReceiveMode
 		requiredSessionID *string
+		prefetchCount     *uint32
 	}
-
-	// SubscriptionManager provides CRUD functionality for Service Bus Subscription
-	SubscriptionManager struct {
-		*entityManager
-		Topic *Topic
-	}
-
-	// SubscriptionEntity is the Azure Service Bus description of a topic Subscription for management activities
-	SubscriptionEntity struct {
-		*SubscriptionDescription
-		Name string
-	}
-
-	// subscriptionFeed is a specialized feed containing Topic Subscriptions
-	subscriptionFeed struct {
-		*atom.Feed
-		Entries []subscriptionEntry `xml:"entry"`
-	}
-
-	// subscriptionEntryContent is a specialized Topic feed Subscription
-	subscriptionEntry struct {
-		*atom.Entry
-		Content *subscriptionContent `xml:"content"`
-	}
-
-	// subscriptionContent is a specialized Subscription body for an Atom entry
-	subscriptionContent struct {
-		XMLName                 xml.Name                `xml:"content"`
-		Type                    string                  `xml:"type,attr"`
-		SubscriptionDescription SubscriptionDescription `xml:"SubscriptionDescription"`
-	}
-
-	// SubscriptionDescription is the content type for Subscription management requests
-	SubscriptionDescription struct {
-		XMLName xml.Name `xml:"SubscriptionDescription"`
-		BaseEntityDescription
-		LockDuration                              *string                  `xml:"LockDuration,omitempty"` // LockDuration - ISO 8601 timespan duration of a peek-lock; that is, the amount of time that the message is locked for other receivers. The maximum value for LockDuration is 5 minutes; the default value is 1 minute.
-		RequiresSession                           *bool                    `xml:"RequiresSession,omitempty"`
-		DefaultMessageTimeToLive                  *string                  `xml:"DefaultMessageTimeToLive,omitempty"`         // DefaultMessageTimeToLive - ISO 8601 default message timespan to live value. This is the duration after which the message expires, starting from when the message is sent to Service Bus. This is the default value used when TimeToLive is not set on a message itself.
-		DeadLetteringOnMessageExpiration          *bool                    `xml:"DeadLetteringOnMessageExpiration,omitempty"` // DeadLetteringOnMessageExpiration - A value that indicates whether this queue has dead letter support when a message expires.
-		DeadLetteringOnFilterEvaluationExceptions *bool                    `xml:"DeadLetteringOnFilterEvaluationExceptions,omitempty"`
-		MessageCount                              *int64                   `xml:"MessageCount,omitempty"`            // MessageCount - The number of messages in the queue.
-		MaxDeliveryCount                          *int32                   `xml:"MaxDeliveryCount,omitempty"`        // MaxDeliveryCount - The maximum delivery count. A message is automatically deadlettered after this number of deliveries. default value is 10.
-		EnableBatchedOperations                   *bool                    `xml:"EnableBatchedOperations,omitempty"` // EnableBatchedOperations - Value that indicates whether server-side batched operations are enabled.
-		Status                                    *servicebus.EntityStatus `xml:"Status,omitempty"`
-		CreatedAt                                 *date.Time               `xml:"CreatedAt,omitempty"`
-		UpdatedAt                                 *date.Time               `xml:"UpdatedAt,omitempty"`
-		AccessedAt                                *date.Time               `xml:"AccessedAt,omitempty"`
-		AutoDeleteOnIdle                          *string                  `xml:"AutoDeleteOnIdle,omitempty"`
-	}
-
-	// SubscriptionManagementOption represents named options for assisting Subscription creation
-	SubscriptionManagementOption func(*SubscriptionDescription) error
 
 	// SubscriptionOption configures the Subscription Azure Service Bus client
 	SubscriptionOption func(*Subscription) error
 )
-
-// NewSubscriptionManager creates a new SubscriptionManager for a Service Bus Topic
-func (t *Topic) NewSubscriptionManager() *SubscriptionManager {
-	return &SubscriptionManager{
-		entityManager: newEntityManager(t.namespace.getHTTPSHostURI(), t.namespace.TokenProvider),
-		Topic:         t,
-	}
-}
-
-// NewSubscriptionManager creates a new SubscriptionManger for a Service Bus Namespace
-func (ns *Namespace) NewSubscriptionManager(ctx context.Context, topicName string) (*SubscriptionManager, error) {
-	t, err := ns.NewTopic(ctx, topicName)
-	if err != nil {
-		return nil, err
-	}
-	return &SubscriptionManager{
-		entityManager: newEntityManager(t.namespace.getHTTPSHostURI(), t.namespace.TokenProvider),
-		Topic:         t,
-	}, nil
-}
-
-// Delete deletes a Service Bus Topic entity by name
-func (sm *SubscriptionManager) Delete(ctx context.Context, name string) error {
-	span, ctx := sm.startSpanFromContext(ctx, "sb.SubscriptionManager.Delete")
-	defer span.Finish()
-
-	res, err := sm.entityManager.Delete(ctx, sm.getResourceURI(name))
-	if res != nil {
-		defer res.Body.Close()
-	}
-
-	return err
-}
-
-// Put creates or updates a Service Bus Topic
-func (sm *SubscriptionManager) Put(ctx context.Context, name string, opts ...SubscriptionManagementOption) (*SubscriptionEntity, error) {
-	span, ctx := sm.startSpanFromContext(ctx, "sb.SubscriptionManager.Put")
-	defer span.Finish()
-
-	sd := new(SubscriptionDescription)
-	for _, opt := range opts {
-		if err := opt(sd); err != nil {
-			return nil, err
-		}
-	}
-
-	sd.ServiceBusSchema = to.StringPtr(serviceBusSchema)
-
-	qe := &subscriptionEntry{
-		Entry: &atom.Entry{
-			AtomSchema: atomSchema,
-		},
-		Content: &subscriptionContent{
-			Type: applicationXML,
-			SubscriptionDescription: *sd,
-		},
-	}
-
-	reqBytes, err := xml.Marshal(qe)
-	if err != nil {
-		return nil, err
-	}
-
-	reqBytes = xmlDoc(reqBytes)
-	res, err := sm.entityManager.Put(ctx, sm.getResourceURI(name), reqBytes)
-	if res != nil {
-		defer res.Body.Close()
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var entry subscriptionEntry
-	err = xml.Unmarshal(b, &entry)
-	if err != nil {
-		return nil, formatManagementError(b)
-	}
-	return subscriptionEntryToEntity(&entry), nil
-}
-
-// List fetches all of the Topics for a Service Bus Namespace
-func (sm *SubscriptionManager) List(ctx context.Context) ([]*SubscriptionEntity, error) {
-	span, ctx := sm.startSpanFromContext(ctx, "sb.SubscriptionManager.List")
-	defer span.Finish()
-
-	res, err := sm.entityManager.Get(ctx, "/"+sm.Topic.Name+"/subscriptions")
-	if res != nil {
-		defer res.Body.Close()
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var feed subscriptionFeed
-	err = xml.Unmarshal(b, &feed)
-	if err != nil {
-		return nil, formatManagementError(b)
-	}
-
-	subs := make([]*SubscriptionEntity, len(feed.Entries))
-	for idx, entry := range feed.Entries {
-		subs[idx] = subscriptionEntryToEntity(&entry)
-	}
-	return subs, nil
-}
-
-// Get fetches a Service Bus Topic entity by name
-func (sm *SubscriptionManager) Get(ctx context.Context, name string) (*SubscriptionEntity, error) {
-	span, ctx := sm.startSpanFromContext(ctx, "sb.SubscriptionManager.Get")
-	defer span.Finish()
-
-	res, err := sm.entityManager.Get(ctx, sm.getResourceURI(name))
-	if res != nil {
-		defer res.Body.Close()
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	if res.StatusCode == http.StatusNotFound {
-		return nil, nil
-	}
-
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var entry subscriptionEntry
-	err = xml.Unmarshal(b, &entry)
-	if err != nil {
-		if isEmptyFeed(b) {
-			return nil, nil
-		}
-		return nil, formatManagementError(b)
-	}
-	return subscriptionEntryToEntity(&entry), nil
-}
-
-func subscriptionEntryToEntity(entry *subscriptionEntry) *SubscriptionEntity {
-	return &SubscriptionEntity{
-		SubscriptionDescription: &entry.Content.SubscriptionDescription,
-		Name: entry.Title,
-	}
-}
-
-func (sm *SubscriptionManager) getResourceURI(name string) string {
-	return "/" + sm.Topic.Name + "/subscriptions/" + name
-}
 
 // SubscriptionWithReceiveAndDelete configures a subscription to pop and delete messages off of the queue upon receiving the message.
 // This differs from the default, PeekLock, where PeekLock receives a message, locks it for a period of time, then sends
@@ -280,11 +59,23 @@ func SubscriptionWithReceiveAndDelete() SubscriptionOption {
 	}
 }
 
-// NewSubscription creates a new Topic Subscription client
-func (t *Topic) NewSubscription(ctx context.Context, name string, opts ...SubscriptionOption) (*Subscription, error) {
-	span, ctx := t.startSpanFromContext(ctx, "sb.Topic.NewSubscription")
-	defer span.Finish()
+// SubscriptionWithPrefetchCount configures the subscription to attempt to fetch the number of messages specified by the
+// prefetch count at one time.
+//
+// The default is 1 message at a time.
+//
+// Caution: Using PeekLock, messages have a set lock timeout, which can be renewed. By setting a high prefetch count, a
+// local queue of messages could build up and cause message locks to expire before the message lands in the handler. If
+// this happens, the message disposition will fail and will be re-queued and processed again.
+func SubscriptionWithPrefetchCount(prefetch uint32) SubscriptionOption {
+	return func(q *Subscription) error {
+		q.prefetchCount = &prefetch
+		return nil
+	}
+}
 
+// NewSubscription creates a new Topic Subscription client
+func (t *Topic) NewSubscription(name string, opts ...SubscriptionOption) (*Subscription, error) {
 	sub := &Subscription{
 		entity: &entity{
 			namespace: t.namespace,
@@ -293,53 +84,222 @@ func (t *Topic) NewSubscription(ctx context.Context, name string, opts ...Subscr
 		Topic: t,
 	}
 
-	for _, opt := range opts {
-		if err := opt(sub); err != nil {
-			log.For(ctx).Error(err)
+	for i := range opts {
+		if err := opts[i](sub); err != nil {
 			return nil, err
 		}
 	}
 	return sub, nil
 }
 
+// Peek fetches a list of Messages from the Service Bus broker, with-out acquiring a lock or committing to a
+// disposition. The messages are delivered as close to sequence order as possible.
+//
+// The MessageIterator that is returned has the following properties:
+// - Messages are fetches from the server in pages. Page size is configurable with PeekOptions.
+// - The MessageIterator will always return "false" for Done().
+// - When Next() is called, it will return either: a slice of messages and no error, nil with an error related to being
+// unable to complete the operation, or an empty slice of messages and an instance of "ErrNoMessages" signifying that
+// there are currently no messages in the subscription with a sequence ID larger than previously viewed ones.
+func (s *Subscription) Peek(ctx context.Context, options ...PeekOption) (MessageIterator, error) {
+	err := s.ensureReceiver(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return newPeekIterator(s, options...)
+}
+
+// PeekOne fetches a single Message from the Service Bus broker without acquiring a lock or committing to a disposition.
+func (s *Subscription) PeekOne(ctx context.Context, options ...PeekOption) (*Message, error) {
+	err := s.ensureReceiver(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Adding PeekWithPageSize(1) as the last option assures that either:
+	// - creating the iterator will fail because two of the same option will be applied.
+	// - PeekWithPageSize(1) will be applied after all others, so we will not wastefully pull down messages destined to
+	//   be unread.
+	options = append(options, PeekWithPageSize(1))
+
+	it, err := newPeekIterator(s, options...)
+	if err != nil {
+		return nil, err
+	}
+	return it.Next(ctx)
+}
+
 // ReceiveOne will listen to receive a single message. ReceiveOne will only wait as long as the context allows.
-func (s *Subscription) ReceiveOne(ctx context.Context) (*MessageWithContext, error) {
+//
+// Handler must call a disposition action such as Complete, Abandon, Deadletter on the message. If the messages does not
+// have a disposition set, the Queue's DefaultDisposition will be used.
+func (s *Subscription) ReceiveOne(ctx context.Context, handler Handler) error {
 	span, ctx := s.startSpanFromContext(ctx, "sb.Subscription.ReceiveOne")
 	defer span.Finish()
 
-	err := s.ensureReceiver(ctx)
-	if err != nil {
-		return nil, err
+	if err := s.ensureReceiver(ctx); err != nil {
+		return err
 	}
 
-	return s.receiver.ReceiveOne(ctx)
+	return s.receiver.ReceiveOne(ctx, handler)
 }
 
 // Receive subscribes for messages sent to the Subscription
-func (s *Subscription) Receive(ctx context.Context, handler Handler) (*ListenerHandle, error) {
+//
+// Handler must call a disposition action such as Complete, Abandon, Deadletter on the message. If the messages does not
+// have a disposition set, the Queue's DefaultDisposition will be used.
+//
+// If the handler returns an error, the receive loop will be terminated.
+func (s *Subscription) Receive(ctx context.Context, handler Handler) error {
 	span, ctx := s.startSpanFromContext(ctx, "sb.Subscription.Receive")
 	defer span.Finish()
 
-	err := s.ensureReceiver(ctx)
-	if err != nil {
-		return nil, err
+	if err := s.ensureReceiver(ctx); err != nil {
+		return err
 	}
-	return s.receiver.Listen(handler), nil
+	handle := s.receiver.Listen(ctx, handler)
+	<-handle.Done()
+	return handle.Err()
 }
 
-func (s *Subscription) ensureReceiver(ctx context.Context) error {
-	span, ctx := s.startSpanFromContext(ctx, "sb.Queue.ensureReceiver")
+// ReceiveDeferred will receive and handle a set of deferred messages
+//
+// When a queue or subscription client receives a message that it is willing to process, but for which processing is
+// not currently possible due to special circumstances inside of the application, it has the option of "deferring"
+// retrieval of the message to a later point. The message remains in the queue or subscription, but it is set aside.
+//
+// Deferral is a feature specifically created for workflow processing scenarios. Workflow frameworks may require certain
+// operations to be processed in a particular order, and may have to postpone processing of some received messages
+// until prescribed prior work that is informed by other messages has been completed.
+//
+// A simple illustrative example is an order processing sequence in which a payment notification from an external
+// payment provider appears in a system before the matching purchase order has been propagated from the store front
+// to the fulfillment system. In that case, the fulfillment system might defer processing the payment notification
+// until there is an order with which to associate it. In rendezvous scenarios, where messages from different sources
+// drive a workflow forward, the real-time execution order may indeed be correct, but the messages reflecting the
+// outcomes may arrive out of order.
+//
+// Ultimately, deferral aids in reordering messages from the arrival order into an order in which they can be
+// processed, while leaving those messages safely in the message store for which processing needs to be postponed.
+func (s *Subscription) ReceiveDeferred(ctx context.Context, handler Handler, sequenceNumbers ...int64) error {
+	return receiveDeferred(ctx, s, handler, sequenceNumbers...)
+}
+
+// NewSession will create a new session based receiver for the subscription
+//
+// Microsoft Azure Service Bus sessions enable joint and ordered handling of unbounded sequences of related messages.
+// To realize a FIFO guarantee in Service Bus, use Sessions. Service Bus is not prescriptive about the nature of the
+// relationship between the messages, and also does not define a particular model for determining where a message
+// sequence starts or ends.
+func (s *Subscription) NewSession(sessionID *string) *SubscriptionSession {
+	return NewSubscriptionSession(s, sessionID)
+}
+
+// NewReceiver will create a new Receiver for receiving messages off of the queue
+func (s *Subscription) NewReceiver(ctx context.Context, opts ...ReceiverOption) (*Receiver, error) {
+	span, ctx := s.startSpanFromContext(ctx, "sb.Subscription.NewReceiver")
+	defer span.Finish()
+
+	opts = append(opts, ReceiverWithReceiveMode(s.receiveMode))
+
+	if s.prefetchCount != nil {
+		opts = append(opts, ReceiverWithPrefetchCount(*s.prefetchCount))
+	}
+
+	return s.namespace.NewReceiver(ctx, s.Topic.Name+"/Subscriptions/"+s.Name, opts...)
+}
+
+// NewDeadLetter creates an entity that represents the dead letter sub queue of the queue
+//
+// Azure Service Bus queues and topic subscriptions provide a secondary sub-queue, called a dead-letter queue
+// (DLQ). The dead-letter queue does not need to be explicitly created and cannot be deleted or otherwise managed
+// independent of the main entity.
+//
+// The purpose of the dead-letter queue is to hold messages that cannot be delivered to any receiver, or messages
+// that could not be processed. Messages can then be removed from the DLQ and inspected. An application might, with
+// help of an operator, correct issues and resubmit the message, log the fact that there was an error, and take
+// corrective action.
+//
+// From an API and protocol perspective, the DLQ is mostly similar to any other queue, except that messages can only
+// be submitted via the dead-letter operation of the parent entity. In addition, time-to-live is not observed, and
+// you can't dead-letter a message from a DLQ. The dead-letter queue fully supports peek-lock delivery and
+// transactional operations.
+//
+// Note that there is no automatic cleanup of the DLQ. Messages remain in the DLQ until you explicitly retrieve
+// them from the DLQ and call Complete() on the dead-letter message.
+func (s *Subscription) NewDeadLetter() *DeadLetter {
+	return NewDeadLetter(s)
+}
+
+// NewDeadLetterReceiver builds a receiver for the Subscriptions's dead letter queue
+func (s *Subscription) NewDeadLetterReceiver(ctx context.Context, opts ...ReceiverOption) (ReceiveOner, error) {
+	span, ctx := s.startSpanFromContext(ctx, "sb.Subscription.NewDeadLetterReceiver")
+	defer span.Finish()
+
+	deadLetterEntityPath := strings.Join([]string{s.Topic.Name, "Subscriptions", s.Name, DeadLetterQueueName}, "/")
+	return s.namespace.NewReceiver(ctx, deadLetterEntityPath, opts...)
+}
+
+// NewTransferDeadLetter creates an entity that represents the transfer dead letter sub queue of the subscription
+//
+// Messages will be sent to the transfer dead-letter queue under the following conditions:
+//   - A message passes through more than 3 queues or topics that are chained together.
+//   - The destination queue or topic is disabled or deleted.
+//   - The destination queue or topic exceeds the maximum entity size.
+func (s *Subscription) NewTransferDeadLetter() *TransferDeadLetter {
+	return NewTransferDeadLetter(s)
+}
+
+// NewTransferDeadLetterReceiver builds a receiver for the Queue's transfer dead letter queue
+//
+// Messages will be sent to the transfer dead-letter queue under the following conditions:
+//   - A message passes through more than 3 queues or topics that are chained together.
+//   - The destination queue or topic is disabled or deleted.
+//   - The destination queue or topic exceeds the maximum entity size.
+func (s *Subscription) NewTransferDeadLetterReceiver(ctx context.Context, opts ...ReceiverOption) (ReceiveOner, error) {
+	span, ctx := s.startSpanFromContext(ctx, "sb.Subscription.NewTransferDeadLetterReceiver")
+	defer span.Finish()
+
+	transferDeadLetterEntityPath := strings.Join([]string{s.Topic.Name, "subscriptions", s.Name, TransferDeadLetterQueueName}, "/")
+	return s.namespace.NewReceiver(ctx, transferDeadLetterEntityPath, opts...)
+}
+
+// RenewLocks renews the locks on messages provided
+func (s *Subscription) RenewLocks(ctx context.Context, messages ...*Message) error {
+	return renewLocks(ctx, s, messages...)
+}
+
+// Close the underlying connection to Service Bus
+func (s *Subscription) Close(ctx context.Context) error {
+	if s.receiver != nil {
+		err := s.receiver.Close(ctx)
+		if err != nil && !isConnectionClosed(err) {
+			log.For(ctx).Error(err)
+			return err
+		}
+	}
+	return nil
+}
+
+// ManagementPath is the relative uri to address the entity's management functionality
+func (s *Subscription) ManagementPath() string {
+	return strings.Join([]string{s.Topic.Name, "subscriptions", s.Name, "$management"}, "/")
+}
+
+func (s *Subscription) ensureReceiver(ctx context.Context, opts ...ReceiverOption) error {
+	span, ctx := s.startSpanFromContext(ctx, "sb.Subscription.ensureReceiver")
 	defer span.Finish()
 
 	s.receiverMu.Lock()
 	defer s.receiverMu.Unlock()
 
-	opts := []receiverOption{receiverWithReceiveMode(s.receiveMode)}
-	if s.requiredSessionID != nil {
-		opts = append(opts, receiverWithSession(*s.requiredSessionID))
+	// if a receiver is already in established, just return
+	if s.receiver != nil {
+		return nil
 	}
 
-	receiver, err := s.namespace.newReceiver(ctx, s.Topic.Name+"/Subscriptions/"+s.Name, opts...)
+	receiver, err := s.NewReceiver(ctx, opts...)
 	if err != nil {
 		log.For(ctx).Error(err)
 		return err
@@ -349,77 +309,12 @@ func (s *Subscription) ensureReceiver(ctx context.Context) error {
 	return nil
 }
 
-// Close the underlying connection to Service Bus
-func (s *Subscription) Close(ctx context.Context) error {
-	if s.receiver != nil {
-		return s.receiver.Close(ctx)
-	}
-	return nil
-}
+func (s *Subscription) connection(ctx context.Context) (*amqp.Client, error) {
+	span, ctx := s.startSpanFromContext(ctx, "sb.Subscription.connection")
+	defer span.Finish()
 
-// SubscriptionWithBatchedOperations configures the subscription to batch server-side operations.
-func SubscriptionWithBatchedOperations() SubscriptionManagementOption {
-	return func(s *SubscriptionDescription) error {
-		s.EnableBatchedOperations = ptrBool(true)
-		return nil
+	if err := s.ensureReceiver(ctx); err != nil {
+		return nil, err
 	}
-}
-
-// SubscriptionWithLockDuration configures the subscription to have a duration of a peek-lock; that is, the amount of
-// time that the message is locked for other receivers. The maximum value for LockDuration is 5 minutes; the default
-// value is 1 minute.
-func SubscriptionWithLockDuration(window *time.Duration) SubscriptionManagementOption {
-	return func(s *SubscriptionDescription) error {
-		if window == nil {
-			duration := time.Duration(1 * time.Minute)
-			window = &duration
-		}
-		s.LockDuration = durationTo8601Seconds(window)
-		return nil
-	}
-}
-
-// SubscriptionWithRequiredSessions will ensure the subscription requires senders and receivers to have sessionIDs
-func SubscriptionWithRequiredSessions() SubscriptionManagementOption {
-	return func(s *SubscriptionDescription) error {
-		s.RequiresSession = ptrBool(true)
-		return nil
-	}
-}
-
-// SubscriptionWithDeadLetteringOnMessageExpiration will ensure the Subscription sends expired messages to the dead
-// letter queue
-func SubscriptionWithDeadLetteringOnMessageExpiration() SubscriptionManagementOption {
-	return func(s *SubscriptionDescription) error {
-		s.DeadLetteringOnMessageExpiration = ptrBool(true)
-		return nil
-	}
-}
-
-// SubscriptionWithAutoDeleteOnIdle configures the subscription to automatically delete after the specified idle
-// interval. The minimum duration is 5 minutes.
-func SubscriptionWithAutoDeleteOnIdle(window *time.Duration) SubscriptionManagementOption {
-	return func(s *SubscriptionDescription) error {
-		if window != nil {
-			if window.Minutes() < 5 {
-				return errors.New("window must be greater than 5 minutes")
-			}
-			s.AutoDeleteOnIdle = durationTo8601Seconds(window)
-		}
-		return nil
-	}
-}
-
-// SubscriptionWithMessageTimeToLive configures the subscription to set a time to live on messages. This is the duration
-// after which the message expires, starting from when the message is sent to Service Bus. This is the default value
-// used when TimeToLive is not set on a message itself. If nil, defaults to 14 days.
-func SubscriptionWithMessageTimeToLive(window *time.Duration) SubscriptionManagementOption {
-	return func(s *SubscriptionDescription) error {
-		if window == nil {
-			duration := time.Duration(14 * 24 * time.Hour)
-			window = &duration
-		}
-		s.DefaultMessageTimeToLive = durationTo8601Seconds(window)
-		return nil
-	}
+	return s.receiver.connection, nil
 }

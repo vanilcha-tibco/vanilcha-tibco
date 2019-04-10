@@ -30,8 +30,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/servicebus/mgmt/2015-08-01/servicebus"
-	"github.com/Azure/azure-service-bus-go/atom"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/Azure/azure-service-bus-go/atom"
 )
 
 const (
@@ -75,7 +76,7 @@ const (
 		</entry>`
 )
 
-func (suite *serviceBusSuite) TestTopicEntryUnmarshal() {
+func (suite *serviceBusSuite) TestTopicEntry_Unmarshal() {
 	var entry topicEntry
 	err := xml.Unmarshal([]byte(topicEntry1), &entry)
 	suite.Nil(err)
@@ -87,7 +88,7 @@ func (suite *serviceBusSuite) TestTopicEntryUnmarshal() {
 	suite.NotNil(entry.Content)
 }
 
-func (suite *serviceBusSuite) TestTopicUnmarshal() {
+func (suite *serviceBusSuite) TestTopicEntryAndDescription_Unmarshal() {
 	var entry atom.Entry
 	err := xml.Unmarshal([]byte(topicEntry1), &entry)
 	suite.Nil(err)
@@ -106,7 +107,17 @@ func (suite *serviceBusSuite) TestTopicUnmarshal() {
 	suite.EqualValues(servicebus.EntityStatusActive, *td.Status)
 }
 
-func (suite *serviceBusSuite) TestTopicManagementWrites() {
+func (suite *serviceBusSuite) TestTopicManager_NotFound() {
+	ns := suite.getNewSasInstance()
+	tm := ns.NewTopicManager()
+	subEntity, err := tm.Get(context.Background(), "bar")
+	suite.Nil(subEntity)
+	suite.Require().NotNil(err)
+	suite.True(IsErrNotFound(err))
+	suite.Equal("entity at /bar not found", err.Error())
+}
+
+func (suite *serviceBusSuite) TestTopicManagement_Writes() {
 	tests := map[string]func(context.Context, *testing.T, *TopicManager, string){
 		"TestPutDefaultTopic": testPutTopic,
 	}
@@ -115,7 +126,7 @@ func (suite *serviceBusSuite) TestTopicManagementWrites() {
 	tm := ns.NewTopicManager()
 	for name, testFunc := range tests {
 		suite.T().Run(name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 			defer cancel()
 			name := suite.RandomName("gosb", 6)
 			testFunc(ctx, t, tm, name)
@@ -143,7 +154,7 @@ func (suite *serviceBusSuite) TestTopicManagementReads() {
 	ns := suite.getNewSasInstance()
 	tm := ns.NewTopicManager()
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
 	names := []string{suite.randEntityName(), suite.randEntityName()}
@@ -155,7 +166,7 @@ func (suite *serviceBusSuite) TestTopicManagementReads() {
 
 	for name, testFunc := range tests {
 		suite.T().Run(name, func(t *testing.T) {
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 			defer cancel()
 			testFunc(ctx, t, tm, names)
 		})
@@ -206,7 +217,7 @@ func (suite *serviceBusSuite) TestTopicManagement() {
 		setupTestTeardown := func(t *testing.T) {
 			entityName := suite.randEntityName()
 			defer suite.cleanupTopic(entityName)
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 			defer cancel()
 			testFunc(ctx, t, tm, entityName)
 
@@ -267,7 +278,7 @@ func testTopicWithMessageTimeToLive(ctx context.Context, t *testing.T, tm *Topic
 }
 
 func testTopicWithMaxSizeInMegabytes(ctx context.Context, t *testing.T, tm *TopicManager, name string) {
-	size := 2 * Megabytes
+	size := 2 * 1024
 	topic := buildTopic(ctx, t, tm, name, TopicWithMaxSizeInMegabytes(size))
 	assert.Equal(t, int32(size), *topic.MaxSizeInMegabytes)
 }
@@ -294,10 +305,10 @@ func (suite *serviceBusSuite) TestTopic() {
 	for name, testFunc := range tests {
 		setupTestTeardown := func(t *testing.T) {
 			name := suite.randEntityName()
-			ctx, cancel := context.WithTimeout(context.Background(), timeout)
+			ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 			defer cancel()
 			_ = makeTopic(ctx, t, ns, name)
-			topic, err := ns.NewTopic(ctx, name)
+			topic, err := ns.NewTopic(name)
 			if suite.NoError(err) {
 				defer func() {
 					topic.Close(ctx)
@@ -318,7 +329,7 @@ func testTopicSend(ctx context.Context, t *testing.T, topic *Topic) {
 func makeTopic(ctx context.Context, t *testing.T, ns *Namespace, name string, opts ...TopicManagementOption) func() {
 	tm := ns.NewTopicManager()
 	entity, err := tm.Get(ctx, name)
-	if !assert.NoError(t, err) {
+	if err != nil && !IsErrNotFound(err) {
 		assert.FailNow(t, "could not GET a subscription")
 	}
 
@@ -329,7 +340,7 @@ func makeTopic(ctx context.Context, t *testing.T, ns *Namespace, name string, op
 		}
 	}
 	return func() {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 		defer cancel()
 
 		_ = tm.Delete(ctx, entity.Name)
@@ -337,7 +348,7 @@ func makeTopic(ctx context.Context, t *testing.T, ns *Namespace, name string, op
 }
 
 func (suite *serviceBusSuite) cleanupTopic(name string) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), defaultTimeout)
 	defer cancel()
 
 	ns := suite.getNewSasInstance()

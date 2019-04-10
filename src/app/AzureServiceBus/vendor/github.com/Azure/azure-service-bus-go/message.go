@@ -24,11 +24,14 @@ package servicebus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-amqp-common-go/log"
+	"github.com/Azure/azure-amqp-common-go/rpc"
 	"github.com/Azure/azure-amqp-common-go/uuid"
 	"github.com/mitchellh/mapstructure"
 	"pack.ag/amqp"
@@ -41,7 +44,7 @@ type (
 		CorrelationID    string
 		Data             []byte
 		DeliveryCount    uint32
-		GroupID          *string
+		SessionID        *string
 		GroupSequence    *uint32
 		ID               string
 		Label            string
@@ -52,18 +55,16 @@ type (
 		LockToken        *uuid.UUID
 		SystemProperties *SystemProperties
 		UserProperties   map[string]interface{}
+		Format           uint32
 		message          *amqp.Message
+		ec               entityConnector // if an entity connector is present, a message should send disposition via mgmt
 	}
 
 	// DispositionAction represents the action to notify Azure Service Bus of the Message's disposition
-	DispositionAction func(ctx context.Context)
+	DispositionAction func(ctx context.Context) error
 
 	// MessageErrorCondition represents a well-known collection of AMQP errors
 	MessageErrorCondition string
-
-	deliveryAnnotations struct {
-		LockToken *amqp.UUID `mapstructure:"x-opt-lock-token"`
-	}
 
 	// SystemProperties are used to store properties that are set by the system.
 	SystemProperties struct {
@@ -78,15 +79,18 @@ type (
 		ViaPartitionKey        *string    `mapstructure:"x-opt-via-partition-key"`
 	}
 
-	// MessageWithContext is a Service Bus message with its context which propagates the distributed trace information
-	MessageWithContext struct {
-		*Message
-		Ctx context.Context
-	}
-
 	mapStructureTag struct {
 		Name         string
 		PersistEmpty bool
+	}
+
+	dispositionStatus string
+
+	disposition struct {
+		Status                dispositionStatus
+		LockTokens            []*uuid.UUID
+		DeadLetterReason      *string
+		DeadLetterDescription *string
 	}
 )
 
@@ -104,31 +108,15 @@ const (
 	ErrorPreconditionFailed    MessageErrorCondition = "amqp:precondition-failed"
 	ErrorResourceDeleted       MessageErrorCondition = "amqp:resource-deleted"
 	ErrorIllegalState          MessageErrorCondition = "amqp:illegal-state"
+
+	completedDisposition dispositionStatus = "completed"
+	abandonedDisposition dispositionStatus = "abandoned"
+	suspendedDisposition dispositionStatus = "suspended"
 )
 
 const (
 	lockTokenName = "x-opt-lock-token"
 )
-
-// Complete will notify Azure Service Bus that the message was successfully handled and should be deleted from the queue
-func (m *MessageWithContext) Complete() {
-	m.Message.Complete()(m.Ctx)
-}
-
-// Abandon will notify Azure Service Bus the message failed but should be re-queued for delivery.
-func (m *MessageWithContext) Abandon() {
-	m.Message.Abandon()(m.Ctx)
-}
-
-// DeadLetter will notify Azure Service Bus the message failed and should not re-queued
-func (m *MessageWithContext) DeadLetter(err error) {
-	m.Message.DeadLetter(err)(m.Ctx)
-}
-
-// DeadLetterWithInfo will notify Azure Service Bus the message failed and should not be re-queued with additional context
-func (m *MessageWithContext) DeadLetterWithInfo(err error, condition MessageErrorCondition, additionalData map[string]string) {
-	m.Message.DeadLetterWithInfo(err, condition, additionalData)(m.Ctx)
-}
 
 // NewMessageFromString builds an Message from a string message
 func NewMessageFromString(message string) *Message {
@@ -142,37 +130,100 @@ func NewMessage(data []byte) *Message {
 	}
 }
 
-// Complete will notify Azure Service Bus that the message was successfully handled and should be deleted from the queue
-func (m *Message) Complete() DispositionAction {
-	return func(ctx context.Context) {
-		span, _ := m.startSpanFromContext(ctx, "sb.Message.Complete")
+// CompleteAction will notify Azure Service Bus that the message was successfully handled and should be deleted from the
+// queue
+func (m *Message) CompleteAction() DispositionAction {
+	return func(ctx context.Context) error {
+		span, _ := m.startSpanFromContext(ctx, "sb.Message.CompleteAction")
 		defer span.Finish()
 
-		m.message.Accept()
+		return m.Complete(ctx)
 	}
+}
+
+// AbandonAction will notify Azure Service Bus the message failed but should be re-queued for delivery.
+func (m *Message) AbandonAction() DispositionAction {
+	return func(ctx context.Context) error {
+		span, _ := m.startSpanFromContext(ctx, "sb.Message.AbandonAction")
+		defer span.Finish()
+
+		return m.Abandon(ctx)
+	}
+}
+
+// DeadLetterAction will notify Azure Service Bus the message failed and should not re-queued
+func (m *Message) DeadLetterAction(err error) DispositionAction {
+	return func(ctx context.Context) error {
+		span, _ := m.startSpanFromContext(ctx, "sb.Message.DeadLetterAction")
+		defer span.Finish()
+
+		return m.DeadLetter(ctx, err)
+	}
+}
+
+// DeadLetterWithInfoAction will notify Azure Service Bus the message failed and should not be re-queued with additional
+// context
+func (m *Message) DeadLetterWithInfoAction(err error, condition MessageErrorCondition, additionalData map[string]string) DispositionAction {
+	return func(ctx context.Context) error {
+		span, _ := m.startSpanFromContext(ctx, "sb.Message.DeadLetterWithInfoAction")
+		defer span.Finish()
+
+		return m.DeadLetterWithInfo(ctx, err, condition, additionalData)
+	}
+}
+
+// Complete will notify Azure Service Bus that the message was successfully handled and should be deleted from the queue
+func (m *Message) Complete(ctx context.Context) error {
+	span, _ := m.startSpanFromContext(ctx, "sb.Message.Complete")
+	defer span.Finish()
+
+	if m.ec != nil {
+		return sendMgmtDisposition(ctx, m, disposition{Status: completedDisposition})
+	}
+
+	return m.message.Accept()
 }
 
 // Abandon will notify Azure Service Bus the message failed but should be re-queued for delivery.
-func (m *Message) Abandon() DispositionAction {
-	return func(ctx context.Context) {
-		span, _ := m.startSpanFromContext(ctx, "sb.Message.Abandon")
-		defer span.Finish()
+func (m *Message) Abandon(ctx context.Context) error {
+	span, _ := m.startSpanFromContext(ctx, "sb.Message.Abandon")
+	defer span.Finish()
 
-		m.message.Modify(false, false, nil)
+	if m.ec != nil {
+		d := disposition{
+			Status: abandonedDisposition,
+		}
+		return sendMgmtDisposition(ctx, m, d)
 	}
+
+	return m.message.Modify(false, false, nil)
 }
 
-// TODO: Defer - will move to the "defer" queue and user will need to track the sequence number
-// FailButRetryElsewhere will notify Azure Service Bus the message failed but should be re-queued for deliver to any
-// other link but this one.
-//func (m *Message) FailButRetryElsewhere() DispositionAction {
-//	return func(ctx context.Context) {
-//		span, _ := m.startSpanFromContext(ctx, "sb.Message.FailButRetryElsewhere")
-//		defer span.Finish()
+// Defer will set aside the message for later processing
 //
-//		m.message.Modify(true, true, nil)
-//	}
-//}
+// When a queue or subscription client receives a message that it is willing to process, but for which processing is
+// not currently possible due to special circumstances inside of the application, it has the option of "deferring"
+// retrieval of the message to a later point. The message remains in the queue or subscription, but it is set aside.
+//
+// Deferral is a feature specifically created for workflow processing scenarios. Workflow frameworks may require certain
+// operations to be processed in a particular order, and may have to postpone processing of some received messages
+// until prescribed prior work that is informed by other messages has been completed.
+//
+// A simple illustrative example is an order processing sequence in which a payment notification from an external
+// payment provider appears in a system before the matching purchase order has been propagated from the store front
+// to the fulfillment system. In that case, the fulfillment system might defer processing the payment notification
+// until there is an order with which to associate it. In rendezvous scenarios, where messages from different sources
+// drive a workflow forward, the real-time execution order may indeed be correct, but the messages reflecting the
+// outcomes may arrive out of order.
+//
+// Ultimately, deferral aids in reordering messages from the arrival order into an order in which they can be
+// processed, while leaving those messages safely in the message store for which processing needs to be postponed.
+func (m *Message) Defer(ctx context.Context) error {
+	span, _ := m.startSpanFromContext(ctx, "sb.Message.Defer")
+	defer span.Finish()
+
+	return m.message.Modify(true, true, nil)
+}
 
 // Release will notify Azure Service Bus the message should be re-queued without failure.
 //func (m *Message) Release() DispositionAction {
@@ -185,22 +236,42 @@ func (m *Message) Abandon() DispositionAction {
 //}
 
 // DeadLetter will notify Azure Service Bus the message failed and should not re-queued
-func (m *Message) DeadLetter(err error) DispositionAction {
-	return func(ctx context.Context) {
-		span, _ := m.startSpanFromContext(ctx, "sb.Message.DeadLetter")
-		defer span.Finish()
+func (m *Message) DeadLetter(ctx context.Context, err error) error {
+	span, _ := m.startSpanFromContext(ctx, "sb.Message.DeadLetter")
+	defer span.Finish()
 
-		amqpErr := amqp.Error{
-			Condition:   amqp.ErrorCondition(ErrorInternalError),
-			Description: err.Error(),
+	if m.ec != nil {
+		d := disposition{
+			Status:                suspendedDisposition,
+			DeadLetterDescription: ptrString(err.Error()),
+			DeadLetterReason:      ptrString("amqp:error"),
 		}
-		m.message.Reject(&amqpErr)
+		return sendMgmtDisposition(ctx, m, d)
 	}
+
+	amqpErr := amqp.Error{
+		Condition:   amqp.ErrorCondition(ErrorInternalError),
+		Description: err.Error(),
+	}
+	return m.message.Reject(&amqpErr)
+
 }
 
 // DeadLetterWithInfo will notify Azure Service Bus the message failed and should not be re-queued with additional
 // context
-func (m *Message) DeadLetterWithInfo(err error, condition MessageErrorCondition, additionalData map[string]string) DispositionAction {
+func (m *Message) DeadLetterWithInfo(ctx context.Context, err error, condition MessageErrorCondition, additionalData map[string]string) error {
+	span, _ := m.startSpanFromContext(ctx, "sb.Message.DeadLetterWithInfo")
+	defer span.Finish()
+
+	if m.ec != nil {
+		d := disposition{
+			Status:                suspendedDisposition,
+			DeadLetterDescription: ptrString(err.Error()),
+			DeadLetterReason:      ptrString("amqp:error"),
+		}
+		return sendMgmtDisposition(ctx, m, d)
+	}
+
 	var info map[string]interface{}
 	if additionalData != nil {
 		info = make(map[string]interface{}, len(additionalData))
@@ -209,17 +280,22 @@ func (m *Message) DeadLetterWithInfo(err error, condition MessageErrorCondition,
 		}
 	}
 
-	return func(ctx context.Context) {
-		span, _ := m.startSpanFromContext(ctx, "sb.Message.DeadLetterWithInfo")
-		defer span.Finish()
-
-		amqpErr := amqp.Error{
-			Condition:   amqp.ErrorCondition(condition),
-			Description: err.Error(),
-			Info:        info,
-		}
-		m.message.Reject(&amqpErr)
+	amqpErr := amqp.Error{
+		Condition:   amqp.ErrorCondition(condition),
+		Description: err.Error(),
+		Info:        info,
 	}
+	return m.message.Reject(&amqpErr)
+}
+
+// ScheduleAt will ensure Azure Service Bus delivers the message after the time specified
+// (usually within 1 minute after the specified time)
+func (m *Message) ScheduleAt(t time.Time) {
+	if m.SystemProperties == nil {
+		m.SystemProperties = new(SystemProperties)
+	}
+	utcTime := t.UTC()
+	m.SystemProperties.ScheduledEnqueueTime = &utcTime
 }
 
 // Set implements opentracing.TextMapWriter and sets properties on the event to be propagated to the message broker
@@ -241,18 +317,78 @@ func (m *Message) ForeachKey(handler func(key, val string) error) error {
 	return nil
 }
 
+func sendMgmtDisposition(ctx context.Context, m *Message, state disposition) error {
+	span, ctx := startConsumerSpanFromContext(ctx, "sb.sendMgmtDisposition")
+	defer span.Finish()
+
+	if m.LockToken == nil {
+		return errors.New("lock token on the message is not set, thus cannot send disposition")
+	}
+
+	value := map[string]interface{}{
+		"disposition-status": string(state.Status),
+		"lock-tokens":        []amqp.UUID{amqp.UUID(*m.LockToken)},
+	}
+
+	if state.DeadLetterReason != nil {
+		value["deadletter-reason"] = state.DeadLetterReason
+	}
+
+	if state.DeadLetterDescription != nil {
+		value["deadletter-description"] = state.DeadLetterDescription
+	}
+
+	msg := &amqp.Message{
+		ApplicationProperties: map[string]interface{}{
+			operationFieldName: "com.microsoft:update-disposition",
+		},
+		Value: value,
+	}
+
+	conn, err := m.ec.connection(ctx)
+	if err != nil {
+		log.For(ctx).Error(err)
+		return err
+	}
+
+	link, err := rpc.NewLink(conn, m.ec.ManagementPath())
+	if err != nil {
+		log.For(ctx).Error(err)
+		return err
+	}
+
+	// no error, then it was successful
+	_, err = link.RetryableRPC(ctx, 5, 5*time.Second, msg)
+	if err != nil {
+		log.For(ctx).Error(err)
+		return err
+	}
+
+	return nil
+}
+
 func (m *Message) toMsg() (*amqp.Message, error) {
 	amqpMsg := m.message
 	if amqpMsg == nil {
 		amqpMsg = amqp.NewMessage(m.Data)
 	}
 
+	if m.TTL != nil {
+		if amqpMsg.Header == nil {
+			amqpMsg.Header = new(amqp.MessageHeader)
+		}
+		amqpMsg.Header.TTL = *m.TTL
+	}
+
 	amqpMsg.Properties = &amqp.MessageProperties{
 		MessageID: m.ID,
 	}
 
-	if m.GroupID != nil && m.GroupSequence != nil {
-		amqpMsg.Properties.GroupID = *m.GroupID
+	if m.SessionID != nil {
+		amqpMsg.Properties.GroupID = *m.SessionID
+	}
+
+	if m.GroupSequence != nil {
 		amqpMsg.Properties.GroupSequence = *m.GroupSequence
 	}
 
@@ -285,13 +421,6 @@ func (m *Message) toMsg() (*amqp.Message, error) {
 		amqpMsg.DeliveryAnnotations[lockTokenName] = *m.LockToken
 	}
 
-	if m.TTL != nil {
-		if amqpMsg.Header == nil {
-			amqpMsg.Header = new(amqp.MessageHeader)
-		}
-		amqpMsg.Header.TTL = *m.TTL
-	}
-
 	return amqpMsg, nil
 }
 
@@ -321,7 +450,7 @@ func newMessage(data []byte, amqpMsg *amqp.Message) (*Message, error) {
 		if id, ok := amqpMsg.Properties.MessageID.(string); ok {
 			msg.ID = id
 		}
-		msg.GroupID = &amqpMsg.Properties.GroupID
+		msg.SessionID = &amqpMsg.Properties.GroupID
 		msg.GroupSequence = &amqpMsg.Properties.GroupSequence
 		if id, ok := amqpMsg.Properties.CorrelationID.(string); ok {
 			msg.CorrelationID = id
@@ -331,8 +460,17 @@ func newMessage(data []byte, amqpMsg *amqp.Message) (*Message, error) {
 		msg.To = amqpMsg.Properties.To
 		msg.ReplyTo = amqpMsg.Properties.ReplyTo
 		msg.ReplyToGroupID = amqpMsg.Properties.ReplyToGroupID
-		msg.DeliveryCount = amqpMsg.Header.DeliveryCount + 1
-		msg.TTL = &amqpMsg.Header.TTL
+		if amqpMsg.Header != nil {
+			msg.DeliveryCount = amqpMsg.Header.DeliveryCount + 1
+			msg.TTL = &amqpMsg.Header.TTL
+		}
+	}
+
+	if amqpMsg.ApplicationProperties != nil {
+		msg.UserProperties = make(map[string]interface{}, len(amqpMsg.ApplicationProperties))
+		for key, value := range amqpMsg.ApplicationProperties {
+			msg.UserProperties[key] = value
+		}
 	}
 
 	if amqpMsg.Annotations != nil {
@@ -341,19 +479,51 @@ func newMessage(data []byte, amqpMsg *amqp.Message) (*Message, error) {
 		}
 	}
 
-	if amqpMsg.DeliveryAnnotations != nil {
-		var da deliveryAnnotations
-		if err := mapstructure.Decode(amqpMsg.DeliveryAnnotations, &da); err != nil {
+	if amqpMsg.DeliveryTag != nil && len(amqpMsg.DeliveryTag) > 0 {
+		lockToken, err := lockTokenFromMessageTag(amqpMsg)
+		if err != nil {
 			return msg, err
 		}
-		if da.LockToken != nil {
-			foo := *da.LockToken
-			bar := uuid.UUID(foo)
-			msg.LockToken = &bar
+		msg.LockToken = lockToken
+	}
+
+	if token, ok := amqpMsg.DeliveryAnnotations[lockTokenName]; ok {
+		if id, ok := token.(amqp.UUID); ok {
+			sid := uuid.UUID([16]byte(id))
+			msg.LockToken = &sid
 		}
 	}
 
+	msg.Format = amqpMsg.Format
 	return msg, nil
+}
+
+func lockTokenFromMessageTag(msg *amqp.Message) (*uuid.UUID, error) {
+	return uuidFromLockTokenBytes(msg.DeliveryTag)
+}
+
+func uuidFromLockTokenBytes(bytes []byte) (*uuid.UUID, error) {
+	if len(bytes) != 16 {
+		return nil, fmt.Errorf("invalid lock token, token was not 16 bytes long")
+	}
+
+	var swapIndex = func(indexOne, indexTwo int, array *[16]byte) {
+		v1 := array[indexOne]
+		array[indexOne] = array[indexTwo]
+		array[indexTwo] = v1
+	}
+
+	// Get lock token from the deliveryTag
+	var lockTokenBytes [16]byte
+	copy(lockTokenBytes[:], bytes[:16])
+	// translate from .net guid byte serialisation format to amqp rfc standard
+	swapIndex(0, 3, &lockTokenBytes)
+	swapIndex(1, 2, &lockTokenBytes)
+	swapIndex(4, 5, &lockTokenBytes)
+	swapIndex(6, 7, &lockTokenBytes)
+	amqpUUID := uuid.UUID(lockTokenBytes)
+
+	return &amqpUUID, nil
 }
 
 func encodeStructureToMap(structPointer interface{}) (map[string]interface{}, error) {
