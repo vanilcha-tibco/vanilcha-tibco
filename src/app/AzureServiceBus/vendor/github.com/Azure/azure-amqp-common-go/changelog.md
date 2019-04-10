@@ -1,5 +1,35 @@
 # Change Log
 
+## `v1.1.4`
+- allow status description on RPC calls to be empty without returning an error https://github.com/Azure/azure-event-hubs-go/issues/88
+
+## `v1.1.3`
+- adding automatic server-timeout field for `rpc` package. It gleans the appropriate value from the context passed to it
+
+## `v1.1.2`
+- adopting go modules 
+
+## `v1.1.1`
+- broadening accepted versions of pack.ag/amqp
+
+## `v1.1.0`
+
+- adding the ability to reuse an AMQP session while making RPCs
+- bug fixes
+
+## `v1.0.3`
+- updating dependencies, adding new 'go-autorest' constraint
+
+## `v1.0.2`
+- adding resiliency against malformed "status-code" and "status-description" properties in rpc responses
+
+## `v1.0.1`
+- bump version constant
+
+## `v1.0.0`
+- moved to opencensus from opentracing
+- committing to backward compatibility
+
 ## `v0.7.0`
 - update AMQP dependency to 0.7.0
 

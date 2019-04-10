@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"git.tibco.com/git/product/ipaas/wi-zoho.git/src/app/Zoho-CRM"
+	azservicebus "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus"
 	"github.com/TIBCOSoftware/flogo-contrib/action/flow/test"
 	"github.com/TIBCOSoftware/flogo-lib/core/activity"
 	"github.com/TIBCOSoftware/flogo-lib/core/data"
@@ -54,7 +54,7 @@ var serviceBusConnectionJSON = `{
 		  "name": "Resource URI",
 		  "visible": true
 		},
-		"value":"spaddindev"
+		"value":"tibcojetblueexp"
 	  },
 	  {
 		"name": "authorizationRuleName",
@@ -64,7 +64,7 @@ var serviceBusConnectionJSON = `{
 		  "name": "Resource URI",
 		  "visible": true
 		},
-		"value":"PluginServiceBus"
+		"value":"golangtest"
 	  },
 	  {
 		"name": "primarysecondaryKey",
@@ -74,7 +74,7 @@ var serviceBusConnectionJSON = `{
 		  "name": "Resource URI",
 		  "visible": true
 		},
-		"value":"wPdI5Lk/Dh8b3GT8Z3R4pIb/7mCTBlr8CQ9gaSBVvFg="
+		"value":"vhMKaTQec0YkqLG5963xz8QEezJKpQ+unBxquWG9qMY="
 	  },
 	  {
 		"name": "WI_STUDIO_OAUTH_CONNECTOR_INFO",
@@ -101,13 +101,13 @@ func getConnector(t *testing.T, jsonConnection string) (map[string]interface{}, 
 	return connector, nil
 }
 
-func getConnection(t *testing.T, jsonConnection string) (connection *zoho.Connection, err error) {
+func getConnection(t *testing.T, jsonConnection string) (connection *azservicebus.Connection, err error) {
 	connector, err := getConnector(t, jsonConnection)
 	assert.NotNil(t, connector)
 
-	connection, err = zoho.GetConnection(connector)
+	connection, err = azservicebus.GetConnection(connector)
 	if err != nil {
-		t.Errorf("Zoho CRM get connection failed %s", err.Error())
+		t.Errorf("azservicebus  get connection failed %s", err.Error())
 		t.Fail()
 	}
 	assert.NotNil(t, connection)
@@ -144,14 +144,14 @@ func TestPublishMessagetoQueue(t *testing.T) {
 	tc.SetInput("entityType", "Queue")
 
 	//	/api/campaign/version/3/do/read/id/<id>?...
-	//https://pi.zoho.com/api/login/version/3
+	//https://pi.servicebus.com/api/login/version/3
 	// queryURL := connection.baseURL + "/" + objectName + "/version/3/do/read/{id}"
 
 	var inputParams interface{}
 	var inputJSON = []byte(`{"parameters":{
-		"queueName": "testqueue",
+		"queueName": "jbqueue3",
 		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message now.</string>",
-		"brokerProperties":{"Label":"Test"}	
+		"brokerProperties":{"Label":"Test","SessionId":"testSession"}	
 		}	
 	}`)
 
@@ -198,7 +198,7 @@ func TestPublishMessagetoTopic(t *testing.T) {
 	tc.SetInput("entityType", "Topic")
 
 	//	/api/campaign/version/3/do/read/id/<id>?...
-	//https://pi.zoho.com/api/login/version/3
+	//https://pi.servicebus.com/api/login/version/3
 	// queryURL := connection.baseURL + "/" + objectName + "/version/3/do/read/{id}"
 
 	var inputParams interface{}

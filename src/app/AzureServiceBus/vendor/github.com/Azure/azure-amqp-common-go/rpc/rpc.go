@@ -70,7 +70,13 @@ func NewLink(conn *amqp.Client, address string) (*Link, error) {
 		return nil, err
 	}
 
-	authSender, err := authSession.NewSender(
+	return NewLinkWithSession(conn, authSession, address)
+}
+
+// NewLinkWithSession will build a new request response link, but will reuse an existing AMQP session
+func NewLinkWithSession(conn *amqp.Client, session *amqp.Session, address string) (*Link, error) {
+
+	authSender, err := session.NewSender(
 		amqp.LinkTargetAddress(address),
 	)
 	if err != nil {
@@ -84,7 +90,7 @@ func NewLink(conn *amqp.Client, address string) (*Link, error) {
 
 	id := linkID.String()
 	clientAddress := strings.Replace("$", "", address, -1) + replyPostfix + id
-	authReceiver, err := authSession.NewReceiver(
+	authReceiver, err := session.NewReceiver(
 		amqp.LinkSourceAddress(address),
 		amqp.LinkTargetAddress(clientAddress),
 	)
@@ -95,7 +101,7 @@ func NewLink(conn *amqp.Client, address string) (*Link, error) {
 	return &Link{
 		sender:        authSender,
 		receiver:      authReceiver,
-		session:       authSession,
+		session:       session,
 		clientAddress: clientAddress,
 		id:            id,
 	}, nil
@@ -104,11 +110,11 @@ func NewLink(conn *amqp.Client, address string) (*Link, error) {
 // RetryableRPC attempts to retry a request a number of times with delay
 func (l *Link) RetryableRPC(ctx context.Context, times int, delay time.Duration, msg *amqp.Message) (*Response, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "az-amqp-common.rpc.RetryableRPC")
-	defer span.Finish()
+	defer span.End()
 
 	res, err := common.Retry(times, delay, func() (interface{}, error) {
 		span, ctx := tracing.StartSpanFromContext(ctx, "az-amqp-common.rpc.RetryableRPC.retry")
-		defer span.Finish()
+		defer span.End()
 
 		res, err := l.RPC(ctx, msg)
 		if err != nil {
@@ -138,16 +144,28 @@ func (l *Link) RetryableRPC(ctx context.Context, times int, delay time.Duration,
 
 // RPC sends a request and waits on a response for that request
 func (l *Link) RPC(ctx context.Context, msg *amqp.Message) (*Response, error) {
+	const altStatusCodeKey, altDescriptionKey = "statusCode", "statusDescription"
+
 	l.rpcMu.Lock()
 	defer l.rpcMu.Unlock()
 
 	span, ctx := tracing.StartSpanFromContext(ctx, "az-amqp-common.rpc.RPC")
-	defer span.Finish()
+	defer span.End()
 
 	if msg.Properties == nil {
 		msg.Properties = &amqp.MessageProperties{}
 	}
 	msg.Properties.ReplyTo = l.clientAddress
+
+	if msg.ApplicationProperties == nil {
+		msg.ApplicationProperties = make(map[string]interface{})
+	}
+
+	if _, ok := msg.ApplicationProperties["server-timeout"]; !ok {
+		if deadline, ok := ctx.Deadline(); ok {
+			msg.ApplicationProperties["server-timeout"] = uint(time.Until(deadline) / time.Millisecond)
+		}
+	}
 
 	err := l.sender.Send(ctx, msg)
 	if err != nil {
@@ -159,18 +177,35 @@ func (l *Link) RPC(ctx context.Context, msg *amqp.Message) (*Response, error) {
 		return nil, err
 	}
 
-	statusCode, ok := res.ApplicationProperties[statusCodeKey].(int32)
-	if !ok {
+	var statusCode int
+	statusCodeCandidates := []string{statusCodeKey, altStatusCodeKey}
+	for i := range statusCodeCandidates {
+		if rawStatusCode, ok := res.ApplicationProperties[statusCodeCandidates[i]]; ok {
+			if cast, ok := rawStatusCode.(int32); ok {
+				statusCode = int(cast)
+				break
+			} else {
+				return nil, errors.New("status code was not of expected type int32")
+			}
+		}
+	}
+	if statusCode == 0 {
 		return nil, errors.New("status codes was not found on rpc message")
 	}
 
-	description, ok := res.ApplicationProperties[descriptionKey].(string)
-	if !ok {
-		return nil, errors.New("description was not found on rpc message")
+	var description string
+	descriptionCandidates := []string{descriptionKey, altDescriptionKey}
+	for i := range descriptionCandidates {
+		if rawDescription, ok := res.ApplicationProperties[descriptionCandidates[i]]; ok {
+			if description, ok = rawDescription.(string); ok || rawDescription == nil {
+				break
+			} else {
+				return nil, errors.New("status description was not of expected type string")
+			}
+		}
 	}
 
 	res.Accept()
-
 	return &Response{
 		Code:        int(statusCode),
 		Description: description,
@@ -181,7 +216,7 @@ func (l *Link) RPC(ctx context.Context, msg *amqp.Message) (*Response, error) {
 // Close the link receiver, sender and session
 func (l *Link) Close(ctx context.Context) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "az-amqp-common.rpc.Close")
-	defer span.Finish()
+	defer span.End()
 
 	if err := l.closeReceiver(ctx); err != nil {
 		_ = l.closeSender(ctx)
@@ -199,7 +234,7 @@ func (l *Link) Close(ctx context.Context) error {
 
 func (l *Link) closeReceiver(ctx context.Context) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "az-amqp-common.rpc.closeReceiver")
-	defer span.Finish()
+	defer span.End()
 
 	if l.receiver != nil {
 		return l.receiver.Close(ctx)
@@ -209,7 +244,7 @@ func (l *Link) closeReceiver(ctx context.Context) error {
 
 func (l *Link) closeSender(ctx context.Context) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "az-amqp-common.rpc.closeSender")
-	defer span.Finish()
+	defer span.End()
 
 	if l.sender != nil {
 		return l.sender.Close(ctx)
@@ -219,7 +254,7 @@ func (l *Link) closeSender(ctx context.Context) error {
 
 func (l *Link) closeSession(ctx context.Context) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "az-amqp-common.rpc.closeSession")
-	defer span.Finish()
+	defer span.End()
 
 	if l.session != nil {
 		return l.session.Close(ctx)

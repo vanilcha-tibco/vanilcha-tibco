@@ -128,7 +128,7 @@ func TestIntegrationRoundTrip(t *testing.T) {
 					defer testClose(t, sender.Close)
 
 					for i, data := range tt.data {
-						ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+						ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 						err = sender.Send(ctx, amqp.NewMessage([]byte(data)))
 						cancel()
 						if err != nil {
@@ -146,7 +146,6 @@ func TestIntegrationRoundTrip(t *testing.T) {
 					receiver, err := session.NewReceiver(
 						amqp.LinkSourceAddress(queueName),
 						amqp.LinkCredit(10),
-						amqp.LinkBatching(false),
 					)
 					if err != nil {
 						receiveErr = err
@@ -160,6 +159,16 @@ func TestIntegrationRoundTrip(t *testing.T) {
 						cancel()
 						if err != nil {
 							receiveErr = fmt.Errorf("Error after %d receives: %+v", i, err)
+							return
+						}
+
+						if msg.DeliveryTag == nil {
+							receiveErr = fmt.Errorf("Error after %d receives: nil deliverytag received", i)
+							return
+						}
+
+						if msg.DeliveryTag != nil && len(msg.DeliveryTag) != 16 {
+							receiveErr = fmt.Errorf("Error after %d receives: deliverytag should be 16 length byte array representing a UUID. Got: %v", i, len(msg.DeliveryTag))
 							return
 						}
 
@@ -382,7 +391,6 @@ func TestIntegrationReceiverModeSecond(t *testing.T) {
 					receiver, err := session.NewReceiver(
 						amqp.LinkSourceAddress(queueName),
 						amqp.LinkReceiverSettle(amqp.ModeSecond),
-						amqp.LinkBatching(false),
 					)
 					if err != nil {
 						receiveErr = err
@@ -449,8 +457,9 @@ func TestIntegrationSend(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		label string
-		data  []string
+		label       string
+		data        []string
+		deliveryTag []byte
 	}{
 		{
 			label: "3 send, small payload",
@@ -459,6 +468,14 @@ func TestIntegrationSend(t *testing.T) {
 				"2Hi there!",
 				"2Ho there!",
 			},
+			deliveryTag: nil,
+		},
+		{
+			label: "1 send, deliverytagset",
+			data: []string{
+				"2Hey there - with tag!",
+			},
+			deliveryTag: []byte("37c4acb3"),
 		},
 	}
 
@@ -488,7 +505,11 @@ func TestIntegrationSend(t *testing.T) {
 
 			for i, data := range tt.data {
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-				err = sender.Send(ctx, amqp.NewMessage([]byte(data)))
+				msg := amqp.NewMessage([]byte(data))
+				if tt.deliveryTag != nil {
+					msg.DeliveryTag = tt.deliveryTag
+				}
+				err = sender.Send(ctx, msg)
 				cancel()
 				if err != nil {
 					t.Fatalf("Error after %d sends: %+v", i, err)
@@ -501,7 +522,7 @@ func TestIntegrationSend(t *testing.T) {
 			checkLeaks() // this is done here because queuesClient starts additional goroutines
 
 			// Wait for Azure to update stats
-			time.Sleep(1 * time.Second)
+			time.Sleep(5 * time.Second)
 
 			q, err := queuesClient.Get(context.Background(), resourceGroup, namespace, queueName)
 			if err != nil {
@@ -707,6 +728,63 @@ func TestIntegrationSessionHandleMax(t *testing.T) {
 	}
 }
 
+func TestIntegrationLinkName(t *testing.T) {
+	queueName, _, cleanup := newTestQueue(t, "linkName")
+	defer cleanup()
+
+	tests := []struct {
+		name  string
+		error string
+	}{
+		{
+			name:  "linkA",
+			error: "link with name 'linkA' already exists",
+		},
+	}
+
+	for _, tt := range tests {
+		label := fmt.Sprintf("name %v", tt.name)
+		t.Run(label, func(t *testing.T) {
+			// Create client
+			client := newSBClient(t, label)
+			defer client.Close()
+
+			// Open a session
+			session, err := client.NewSession()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			senderOrigin, err := session.NewSender(
+				amqp.LinkTargetAddress(queueName),
+				amqp.LinkName(tt.name),
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer testClose(t, senderOrigin.Close)
+
+			// This one should fail
+			sender, err := session.NewSender(
+				amqp.LinkTargetAddress(queueName),
+				amqp.LinkName(tt.name),
+			)
+			if err == nil {
+				testClose(t, sender.Close)
+			}
+
+			switch {
+			case err == nil && tt.error == "":
+				// success
+			case err == nil:
+				t.Fatalf("expected error to contain %q, but it was nil", tt.error)
+			case !strings.Contains(err.Error(), tt.error):
+				t.Errorf("expected error to contain %q, but it was %q", tt.error, err)
+			}
+		})
+	}
+}
+
 func TestIntegrationClose(t *testing.T) {
 	queueName, _, cleanup := newTestQueue(t, "close")
 	defer cleanup()
@@ -727,13 +805,13 @@ func TestIntegrationClose(t *testing.T) {
 
 		// Create a sender
 		receiver, err := session.NewReceiver(
-			amqp.LinkTargetAddress(queueName),
+			amqp.LinkSourceAddress(queueName),
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		go testClose(t, receiver.Close)
+		testClose(t, receiver.Close)
 
 		_, err = receiver.Receive(context.Background())
 		if err != amqp.ErrLinkClosed {
@@ -765,13 +843,13 @@ func TestIntegrationClose(t *testing.T) {
 
 		// Create a sender
 		receiver, err := session.NewReceiver(
-			amqp.LinkTargetAddress(queueName),
+			amqp.LinkSourceAddress(queueName),
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		go testClose(t, session.Close)
+		testClose(t, session.Close)
 
 		_, err = receiver.Receive(context.Background())
 		if err != amqp.ErrSessionClosed {
@@ -803,18 +881,16 @@ func TestIntegrationClose(t *testing.T) {
 
 		// Create a sender
 		receiver, err := session.NewReceiver(
-			amqp.LinkTargetAddress(queueName),
+			amqp.LinkSourceAddress(queueName),
 		)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		go func() {
-			err := client.Close()
-			if err != nil {
-				t.Fatalf("Expected nil error from client.Close(), got: %+v", err)
-			}
-		}()
+		err = client.Close()
+		if err != nil {
+			t.Fatalf("Expected nil error from client.Close(), got: %+v", err)
+		}
 
 		_, err = receiver.Receive(context.Background())
 		if err != amqp.ErrConnClosed {
@@ -932,7 +1008,6 @@ func createEventHubReceivers(t testing.TB, hubName string, session *amqp.Session
 			amqp.LinkSourceAddress(hubName+"/ConsumerGroups/$default/Partitions/"+strconv.Itoa(i)),
 			amqp.LinkSelectorFilter("amqp.annotation.x-opt-offset > '@latest'"),
 			amqp.LinkCredit(10),
-			amqp.LinkBatching(false),
 		)
 		if err != nil {
 			t.Fatalf("Error creating receiver: %v", err)
@@ -949,6 +1024,7 @@ func createEventHubReceivers(t testing.TB, hubName string, session *amqp.Session
 		)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
 
 		// receive from each partition concurrently
 		for rxIdx, receiver := range receivers {

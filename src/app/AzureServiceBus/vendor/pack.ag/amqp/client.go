@@ -274,14 +274,28 @@ func (s *Session) txFrame(p frameBody, done chan deliveryState) error {
 	})
 }
 
-// randBytes returns a base64 encoded string of n bytes.
-//
-// A new random source is created to avoid any issues with seeding
+// lockedRand provides a rand source that is safe for concurrent use.
+type lockedRand struct {
+	mu  sync.Mutex
+	src *rand.Rand
+}
+
+func (r *lockedRand) Read(p []byte) (int, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.src.Read(p)
+}
+
+// package scoped rand source to avoid any issues with seeding
 // of the global source.
+var pkgRand = &lockedRand{
+	src: rand.New(rand.NewSource(time.Now().UnixNano())),
+}
+
+// randBytes returns a base64 encoded string of n bytes.
 func randString(n int) string {
-	localRand := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b := make([]byte, n)
-	localRand.Read(b)
+	pkgRand.Read(b)
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
@@ -356,6 +370,10 @@ func (s *Sender) Send(ctx context.Context, msg *Message) error {
 // send is separated from Send so that the mutex unlock can be deferred without
 // locking the transfer confirmation that happens in Send.
 func (s *Sender) send(ctx context.Context, msg *Message) (chan deliveryState, error) {
+	if len(msg.DeliveryTag) > maxDeliveryTagLength {
+		return nil, errorErrorf("delivery tag is over the allowed %v bytes, len: %v", maxDeliveryTagLength, len(msg.DeliveryTag))
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -377,10 +395,13 @@ func (s *Sender) send(ctx context.Context, msg *Message) (chan deliveryState, er
 		deliveryID     = atomic.AddUint32(&s.link.session.nextDeliveryID, 1)
 	)
 
-	// use uint64 encoded as []byte as deliveryTag
-	deliveryTag := make([]byte, 8)
-	binary.BigEndian.PutUint64(deliveryTag, s.nextDeliveryTag)
-	s.nextDeliveryTag++
+	deliveryTag := msg.DeliveryTag
+	if len(deliveryTag) == 0 {
+		// use uint64 encoded as []byte as deliveryTag
+		deliveryTag = make([]byte, 8)
+		binary.BigEndian.PutUint64(deliveryTag, s.nextDeliveryTag)
+		s.nextDeliveryTag++
+	}
 
 	fr := performTransfer{
 		Handle:        s.link.handle,
@@ -511,6 +532,13 @@ func (s *Session) mux(remoteBegin *performBegin) {
 
 		// handle allocation request
 		case l := <-s.allocateHandle:
+			// Check if link name already exists, if so then an error should be returned
+			if linksByName[l.name] != nil {
+				l.err = errorErrorf("link with name '%v' already exists", l.name)
+				l.rx <- nil
+				continue
+			}
+
 			next, ok := handles.next()
 			if !ok {
 				l.err = errorErrorf("reached session handle max (%d)", s.handleMax)
@@ -526,6 +554,7 @@ func (s *Session) mux(remoteBegin *performBegin) {
 		case l := <-s.deallocateHandle:
 			delete(links, l.remoteHandle)
 			delete(deliveryIDByHandle, l.handle)
+			delete(linksByName, l.name)
 			handles.remove(l.handle)
 			close(l.rx) // close channel to indicate deallocation
 
@@ -639,7 +668,6 @@ func (s *Session) mux(remoteBegin *performBegin) {
 				if !linkOk {
 					break
 				}
-				delete(linksByName, body.Name) // name no longer needed
 
 				link.remoteHandle = body.Handle
 				links[link.remoteHandle] = link
@@ -781,7 +809,7 @@ func (e *DetachError) Error() string {
 // Default link options
 const (
 	DefaultLinkCredit      = 1
-	DefaultLinkBatching    = true
+	DefaultLinkBatching    = false
 	DefaultLinkBatchMaxAge = 5 * time.Second
 )
 
@@ -920,23 +948,49 @@ func attachLink(s *Session, r *Receiver, opts []LinkOption) (*link, error) {
 		l.deliveryCount = resp.InitialDeliveryCount
 		// buffer receiver so that link.mux doesn't block
 		l.messages = make(chan Message, l.receiver.maxCredit)
-		if resp.SenderSettleMode != nil {
-			l.senderSettleMode = resp.SenderSettleMode
-		}
 	} else {
 		// if dynamic address requested, copy assigned name to address
 		if l.dynamicAddr && resp.Target != nil {
 			l.target.Address = resp.Target.Address
 		}
 		l.transfers = make(chan performTransfer)
-		if resp.ReceiverSettleMode != nil {
-			l.receiverSettleMode = resp.ReceiverSettleMode
-		}
+	}
+
+	err = l.setSettleModes(resp)
+	if err != nil {
+		l.muxDetach()
+		return nil, err
 	}
 
 	go l.mux()
 
 	return l, nil
+}
+
+// setSettleModes sets the settlement modes based on the resp performAttach.
+//
+// If a settlement mode has been explicitly set locally and it was not honored by the
+// server an error is returned.
+func (l *link) setSettleModes(resp *performAttach) error {
+	var (
+		localRecvSettle = l.receiverSettleMode.value()
+		respRecvSettle  = resp.ReceiverSettleMode.value()
+	)
+	if l.receiverSettleMode != nil && localRecvSettle != respRecvSettle {
+		return fmt.Errorf("amqp: receiver settlement mode %q requested, received %q from server", l.receiverSettleMode, &respRecvSettle)
+	}
+	l.receiverSettleMode = &respRecvSettle
+
+	var (
+		localSendSettle = l.senderSettleMode.value()
+		respSendSettle  = resp.SenderSettleMode.value()
+	)
+	if l.senderSettleMode != nil && localSendSettle != respSendSettle {
+		return fmt.Errorf("amqp: sender settlement mode %q requested, received %q from server", l.senderSettleMode, &respSendSettle)
+	}
+	l.senderSettleMode = &respSendSettle
+
+	return nil
 }
 
 func newLink(s *Session, r *Receiver, opts []LinkOption) (*link, error) {
@@ -1086,6 +1140,8 @@ func (l *link) muxReceive(fr performTransfer) error {
 		if fr.MessageFormat != nil {
 			l.msg.Format = *fr.MessageFormat
 		}
+
+		l.msg.DeliveryTag = fr.DeliveryTag
 	}
 
 	// ensure maxMessageSize will not be exceeded
@@ -1307,13 +1363,24 @@ func (l *link) muxDetach() {
 		Closed: true,
 		Error:  detachError,
 	}
-	select {
-	case l.session.tx <- fr:
-	case <-l.session.done:
-		if l.err == nil {
-			l.err = l.session.err
+
+Loop:
+	for {
+		select {
+		case l.session.tx <- fr:
+			// after sending the detach frame, break the read loop
+			break Loop
+		case fr := <-l.rx:
+			// discard incoming frames to avoid blocking session.mux
+			if fr, ok := fr.(*performDetach); ok && fr.Closed {
+				l.detachReceived = true
+			}
+		case <-l.session.done:
+			if l.err == nil {
+				l.err = l.session.err
+			}
+			return
 		}
-		return
 	}
 
 	// don't wait for remote to detach when already
@@ -1388,6 +1455,36 @@ func linkProperty(key string, value interface{}) LinkOption {
 	}
 }
 
+// LinkName sets the name of the link.
+//
+// The link names must be unique per-connection.
+//
+// Default: randomly generated.
+func LinkName(name string) LinkOption {
+	return func(l *link) error {
+		l.name = name
+		return nil
+	}
+}
+
+// LinkSourceCapabilities sets the source capabilities.
+func LinkSourceCapabilities(capabilities ...string) LinkOption {
+	return func(l *link) error {
+		if l.source == nil {
+			l.source = new(source)
+		}
+
+		// Convert string to symbol
+		symbolCapabilities := make([]symbol, len(capabilities))
+		for i, v := range capabilities {
+			symbolCapabilities[i] = symbol(v)
+		}
+
+		l.source.Capabilities = append(l.source.Capabilities, symbolCapabilities...)
+		return nil
+	}
+}
+
 // LinkSourceAddress sets the source address.
 func LinkSourceAddress(addr string) LinkOption {
 	return func(l *link) error {
@@ -1452,12 +1549,12 @@ func LinkBatchMaxAge(d time.Duration) LinkOption {
 	}
 }
 
-// LinkSenderSettle sets the sender settlement mode.
+// LinkSenderSettle sets the requested sender settlement mode.
 //
-// When the Link is the Receiver, this is a request to the remote
-// server.
+// If a settlement mode is explicitly set and the server does not
+// honor it an error will be returned during link attachment.
 //
-// When the Link is the Sender, this is the actual settlement mode.
+// Default: Accept the settlement mode set by the server, commonly ModeMixed.
 func LinkSenderSettle(mode SenderSettleMode) LinkOption {
 	return func(l *link) error {
 		if mode > ModeMixed {
@@ -1468,12 +1565,12 @@ func LinkSenderSettle(mode SenderSettleMode) LinkOption {
 	}
 }
 
-// LinkReceiverSettle sets the receiver settlement mode.
+// LinkReceiverSettle sets the requested receiver settlement mode.
 //
-// When the Link is the Sender, this is a request to the remote
-// server.
+// If a settlement mode is explicitly set and the server does not
+// honor it an error will be returned during link attachment.
 //
-// When the Link is the Receiver, this is the actual settlement mode.
+// Default: Accept the settlement mode set by the server, commonly ModeFirst.
 func LinkReceiverSettle(mode ReceiverSettleMode) LinkOption {
 	return func(l *link) error {
 		if mode > ModeSecond {
@@ -1484,22 +1581,37 @@ func LinkReceiverSettle(mode ReceiverSettleMode) LinkOption {
 	}
 }
 
-// LinkSessionFilter sets a session filter (com.microsoft:session-filter) on the link source.
-// This is used in Azure Service Bus to filter messages by session ID on a receiving link.
-func LinkSessionFilter(sessionID string) LinkOption {
-	// <descriptor name="com.microsoft:session-filter" code="00000013:7000000C"/>
-	return linkSourceFilter("com.microsoft:session-filter", uint64(0x00000137000000C), sessionID)
-}
-
 // LinkSelectorFilter sets a selector filter (apache.org:selector-filter:string) on the link source.
 func LinkSelectorFilter(filter string) LinkOption {
 	// <descriptor name="apache.org:selector-filter:string" code="0x0000468C:0x00000004"/>
-	return linkSourceFilter("apache.org:selector-filter:string", uint64(0x0000468C00000004), filter)
+	return LinkSourceFilter("apache.org:selector-filter:string", 0x0000468C00000004, filter)
 }
 
-// linkSourceFilter sets a filter on the link source.
-func linkSourceFilter(name string, code uint64, value string) LinkOption {
-	nameSym := symbol(name)
+// LinkSourceFilter is an advanced API for setting non-standard source filters.
+// Please file an issue or open a PR if a standard filter is missing from this
+// library.
+//
+// The name is the key for the filter map. It will be encoded as an AMQP symbol type.
+//
+// The code is the descriptor of the described type value. The domain-id and descriptor-id
+// should be concatenated together. If 0 is passed as the code, the name will be used as
+// the descriptor.
+//
+// The value is the value of the descriped types. Acceptable types for value are specific
+// to the filter.
+//
+// Example:
+//
+// The standard selector-filter is defined as:
+//  <descriptor name="apache.org:selector-filter:string" code="0x0000468C:0x00000004"/>
+// In this case the name is "apache.org:selector-filter:string" and the code is
+// 0x0000468C00000004.
+//  LinkSourceFilter("apache.org:selector-filter:string", 0x0000468C00000004, exampleValue)
+//
+// References:
+//  http://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-messaging-v1.0-os.html#type-filter-set
+//  http://docs.oasis-open.org/amqp/core/v1.0/os/amqp-core-types-v1.0-os.html#section-descriptor-values
+func LinkSourceFilter(name string, code uint64, value interface{}) LinkOption {
 	return func(l *link) error {
 		if l.source == nil {
 			l.source = new(source)
@@ -1507,8 +1619,16 @@ func linkSourceFilter(name string, code uint64, value string) LinkOption {
 		if l.source.Filter == nil {
 			l.source.Filter = make(map[symbol]*describedType)
 		}
-		l.source.Filter[nameSym] = &describedType{
-			descriptor: code,
+
+		var descriptor interface{}
+		if code != 0 {
+			descriptor = code
+		} else {
+			descriptor = symbol(name)
+		}
+
+		l.source.Filter[symbol(name)] = &describedType{
+			descriptor: descriptor,
 			value:      value,
 		}
 		return nil
@@ -1524,6 +1644,43 @@ func linkSourceFilter(name string, code uint64, value string) LinkOption {
 func LinkMaxMessageSize(size uint64) LinkOption {
 	return func(l *link) error {
 		l.maxMessageSize = size
+		return nil
+	}
+}
+
+// LinkSourceDurability sets the source durability policy.
+//
+// Default: DurabilityNone.
+func LinkSourceDurability(d Durability) LinkOption {
+	return func(l *link) error {
+		if d > DurabilityUnsettledState {
+			return errorErrorf("invalid Durability %d", d)
+		}
+
+		if l.source == nil {
+			l.source = new(source)
+		}
+		l.source.Durable = d
+
+		return nil
+	}
+}
+
+// LinkSourceExpiryPolicy sets the link expiration policy.
+//
+// Default: ExpirySessionEnd.
+func LinkSourceExpiryPolicy(p ExpiryPolicy) LinkOption {
+	return func(l *link) error {
+		err := p.validate()
+		if err != nil {
+			return err
+		}
+
+		if l.source == nil {
+			l.source = new(source)
+		}
+		l.source.ExpiryPolicy = p
+
 		return nil
 	}
 }

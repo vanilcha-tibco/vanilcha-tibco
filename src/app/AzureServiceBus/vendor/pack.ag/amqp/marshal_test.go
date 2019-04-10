@@ -188,13 +188,22 @@ func TestMarshalUnmarshal(t *testing.T) {
 				}
 			}
 
+			// handle special case around nil type
+			if type_ == nil {
+				err = unmarshal(&buf, nil)
+				if err != nil {
+					t.Fatal(fmt.Sprintf("%+v", err))
+					return
+				}
+				return
+			}
+
 			newType := reflect.New(reflect.TypeOf(type_))
 			err = unmarshal(&buf, newType.Interface())
 			if err != nil {
 				t.Fatal(fmt.Sprintf("%+v", err))
 				return
 			}
-
 			cmpType := reflect.Indirect(newType).Interface()
 			if !testEqual(type_, cmpType) {
 				t.Errorf("Roundtrip produced different results:\n %s", testDiff(type_, cmpType))
@@ -261,8 +270,8 @@ var (
 			ReceiverSettleMode: rcvSettle(ModeSecond),
 			Source: &source{
 				Address:      "fooAddr",
-				Durable:      2,
-				ExpiryPolicy: "link-detach",
+				Durable:      DurabilityUnsettledState,
+				ExpiryPolicy: ExpiryLinkDetach,
 				Timeout:      635,
 				Dynamic:      true,
 				DynamicNodeProperties: map[symbol]interface{}{
@@ -280,8 +289,8 @@ var (
 			},
 			Target: &target{
 				Address:      "fooAddr",
-				Durable:      2,
-				ExpiryPolicy: "link-detach",
+				Durable:      DurabilityUnsettledState,
+				ExpiryPolicy: ExpiryLinkDetach,
 				Timeout:      635,
 				Dynamic:      true,
 				DynamicNodeProperties: map[symbol]interface{}{
@@ -307,8 +316,8 @@ var (
 		},
 		&source{
 			Address:      "fooAddr",
-			Durable:      2,
-			ExpiryPolicy: "link-detach",
+			Durable:      DurabilityUnsettledState,
+			ExpiryPolicy: ExpiryLinkDetach,
 			Timeout:      635,
 			Dynamic:      true,
 			DynamicNodeProperties: map[symbol]interface{}{
@@ -326,8 +335,8 @@ var (
 		},
 		&target{
 			Address:      "fooAddr",
-			Durable:      2,
-			ExpiryPolicy: "link-detach",
+			Durable:      DurabilityUnsettledState,
+			ExpiryPolicy: ExpiryLinkDetach,
 			Timeout:      635,
 			Dynamic:      true,
 			DynamicNodeProperties: map[symbol]interface{}{
@@ -537,6 +546,7 @@ var (
 	}
 
 	generalTypes = []interface{}{
+		nil,
 		UUID{1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16},
 		bool(true),
 		int8(math.MaxInt8),

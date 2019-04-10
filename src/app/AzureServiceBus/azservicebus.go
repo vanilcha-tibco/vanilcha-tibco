@@ -185,6 +185,11 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	if (reqSysProperties != servicebus.SystemProperties{}) {
 		reqmessage.SystemProperties = &reqSysProperties
 	}
+	// session support
+	if publishInput.BrokerProperties.SessionId != "" {
+		reqmessage.SessionID = &publishInput.BrokerProperties.SessionId
+		fmt.Println("sessionid ", publishInput.BrokerProperties.SessionId)
+	}
 	if objectType == "Queue" {
 		if inputparamtersmap["queueName"] != nil && inputparamtersmap["queueName"].(string) != "" {
 			// queryURL = connection.baseURL + "/" + inputparamtersmap["queueName"].(string) + "/messages"
@@ -313,7 +318,9 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 	var t *servicebus.Topic
 	var topicError error
 	if te != nil {
-		t, topicError = ns.NewTopic(ctx, topicName)
+		// session support
+		//	t, topicError = ns.NewTopic(ctx, topicName)
+		t, topicError = ns.NewTopic(topicName)
 	} else {
 		t = nil
 		topicError = errors.New("Could not find the specified Topic")
