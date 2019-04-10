@@ -60,8 +60,8 @@ export class Connection {
 @WiContrib({})
 @Injectable()
 export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerContribution {
-    private category:       string;
-    private validations:    any;
+    private category: string;
+    private validations: any;
     constructor(@Inject(Injector) injector, private http: Http) {
         super(injector, http);
         this.validations = {};
@@ -80,8 +80,8 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
     }
 
     validate = (fieldName: string, context: IConnectorContribution): Observable<IValidationResult> | IValidationResult => {
-       return null;
-                }
+        return null;
+    }
 
     connection = (input: ObservableInput<any>): Observable<Connection> => {
         let connection: Connection = new Connection(this.http);
@@ -136,100 +136,100 @@ export class TibcoAzServiceBusConnectorContribution extends WiServiceHandlerCont
                     if (!(conData.name !== null && conData.name.trim().length > 0)) {
                         throw new Error(`Please enter the Connection Name!`);
                     }
-                    if ( conData.resourceURI === "") {
+                    if (conData.resourceURI === "") {
                         throw new Error("Please enter the resource URI");
                     }
                     let resourceURL = "";
                     resourceURL = "https://" + conData.resourceURI + ".servicebus.windows.net";
-                        if ( conData.authorizationRuleName === "") {
-                            throw new Error("Please enter the Authorization Rule Name!");
-                        }
-                        if ( conData.primarysecondaryKey === "") {
-                            throw new Error("Please enter the primary/secondaryKey!");
-                        }
+                    if (conData.authorizationRuleName === "") {
+                        throw new Error("Please enter the Authorization Rule Name!");
+                    }
+                    if (conData.primarysecondaryKey === "") {
+                        throw new Error("Please enter the primary/secondaryKey!");
+                    }
                     let stringToSign = "";
-        stringToSign = (resourceURL !== null && resourceURL.trim().length > 0) ? (stringToSign + resourceURL) : "errorMsg";
-        let expiryDate =  String(new Date().getTime() / 1000.0 + 60 * 60 * 24 * 1);
-        stringToSign = (encodeURIComponent(stringToSign) + "\n" + expiryDate);
-        console.log(stringToSign);
-        if (stringToSign.includes("errorMsg")) {
-            throw new Error(`errorMsg`);
-        }
-        if (!(conData.authorizationRuleName !== null && conData.authorizationRuleName.trim().length > 0)) {
-            throw new Error(`errorMsg`);
-        }
-        let hash, hashInBase64;
-        let signingKey = conData.primarysecondaryKey;
-        let decodedKey = (signingKey);
-        hash = cryptos.HmacSHA256(stringToSign, decodedKey);
-        hashInBase64 = cryptos.enc.Base64.stringify(hash);
-        hashInBase64 = encodeURIComponent(hashInBase64);
-        resourceURL = encodeURIComponent(resourceURL);
-        console.log(resourceURL);
-        conData.primarysecondaryKey = "";
-        sharedaccesssignature = "SharedAccessSignature sr=" + resourceURL + "&sig=" + hashInBase64 + "&se=" + expiryDate + "&skn=" + conData.authorizationRuleName;
-      resourceURL = "https://" + conData.resourceURI + ".servicebus.windows.net";
-      return WiProxyCORSUtils.createRequest(this.http, resourceURL  + "/testconnectionqueue" + expiryDate)
-        .addHeader("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
-        .addHeader("Authorization", sharedaccesssignature)
-        .addHeader("If-Match", "*")
-        .addMethod("PUT")
-        .addBody('<entry xmlns="http://www.w3.org/2005/Atom"><content type="application/xml"><QueueDescription xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect"><MaxDeliveryCount>10</MaxDeliveryCount></QueueDescription></content></entry>')
-        .send()
-        .switchMap((response: Response) => {
-            if (response.status  >= 500 || response.status === 401)  {
-                return Observable.of(ActionResult.newActionResult().setSuccess(false)
-                    .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
-            }
-            else {
-                for (let i = 0; i < context.settings.length; i++) {
-                    if (context.settings[i].name === "DocsMetadata") {
-                   context.settings[i].value = JsonSchema.Types.schemaDoc();
-               }
-               }
-                let actionResult = {
-                    context: context,
-                    authType: AUTHENTICATION_TYPE.BASIC,
-                    authData: {}
-                };
-                return Observable.of(ActionResult.newActionResult().setResult(actionResult));
-                }
-        });
+                    stringToSign = (resourceURL !== null && resourceURL.trim().length > 0) ? (stringToSign + resourceURL) : "errorMsg";
+                    let expiryDate = String(new Date().getTime() / 1000.0 + 60 * 60 * 24 * 1);
+                    stringToSign = (encodeURIComponent(stringToSign) + "\n" + expiryDate);
+                    console.log(stringToSign);
+                    if (stringToSign.includes("errorMsg")) {
+                        throw new Error(`errorMsg`);
+                    }
+                    if (!(conData.authorizationRuleName !== null && conData.authorizationRuleName.trim().length > 0)) {
+                        throw new Error(`errorMsg`);
+                    }
+                    let hash, hashInBase64;
+                    let signingKey = conData.primarysecondaryKey;
+                    let decodedKey = (signingKey);
+                    hash = cryptos.HmacSHA256(stringToSign, decodedKey);
+                    hashInBase64 = cryptos.enc.Base64.stringify(hash);
+                    hashInBase64 = encodeURIComponent(hashInBase64);
+                    resourceURL = encodeURIComponent(resourceURL);
+                    console.log(resourceURL);
+                    conData.primarysecondaryKey = "";
+                    sharedaccesssignature = "SharedAccessSignature sr=" + resourceURL + "&sig=" + hashInBase64 + "&se=" + expiryDate + "&skn=" + conData.authorizationRuleName;
+                    resourceURL = "https://" + conData.resourceURI + ".servicebus.windows.net";
+                    return WiProxyCORSUtils.createRequest(this.http, resourceURL + "/testconnectionqueue" + expiryDate)
+                        .addHeader("Content-Type", "application/atom+xml;type=entry;charset=utf-8")
+                        .addHeader("Authorization", sharedaccesssignature)
+                        .addHeader("If-Match", "*")
+                        .addMethod("PUT")
+                        .addBody('<entry xmlns="http://www.w3.org/2005/Atom"><content type="application/xml"><QueueDescription xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect"><MaxDeliveryCount>10</MaxDeliveryCount></QueueDescription></content></entry>')
+                        .send()
+                        .switchMap((response: Response) => {
+                            if (response.status >= 500 || response.status === 401) {
+                                return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                                    .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
+                            }
+                            else {
+                                for (let i = 0; i < context.settings.length; i++) {
+                                    if (context.settings[i].name === "DocsMetadata") {
+                                        context.settings[i].value = JsonSchema.Types.schemaDoc();
+                                    }
+                                }
+                                let actionResult = {
+                                    context: context,
+                                    authType: AUTHENTICATION_TYPE.BASIC,
+                                    authData: {}
+                                };
+                                return Observable.of(ActionResult.newActionResult().setResult(actionResult));
+                            }
+                        });
                 })
-                .catch( (response => {
+                .catch((response => {
                     if (response instanceof Response) {
-                    if (response.status) {
-                    if (response.status >= 500 || response.status === 401) {
-                        return Observable.of(ActionResult.newActionResult().setSuccess(false)
-                        .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
+                        if (response.status) {
+                            if (response.status >= 500 || response.status === 401) {
+                                return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                                    .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
 
-                    }
+                            }
+                            else {
+                                for (let i = 0; i < context.settings.length; i++) {
+                                    if (context.settings[i].name === "DocsMetadata") {
+                                        context.settings[i].value = JsonSchema.Types.schemaDoc();
+                                    }
+                                }
+                                let actionResult = {
+                                    context: context,
+                                    authType: AUTHENTICATION_TYPE.BASIC,
+                                    authData: {}
+                                };
+                                return Observable.of(ActionResult.newActionResult().setResult(actionResult));
+                            }
+                        }
                         else {
-                            for (let i = 0; i < context.settings.length; i++) {
-                                if (context.settings[i].name === "DocsMetadata") {
-                               context.settings[i].value = JsonSchema.Types.schemaDoc();
-                           }
-                           }
-                           let actionResult = {
-                               context: context,
-                               authType: AUTHENTICATION_TYPE.BASIC,
-                               authData: {}
-                           };
-                           return Observable.of(ActionResult.newActionResult().setResult(actionResult));
+                            return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                                .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
+                        }
+                    }
+                    else if (response instanceof Error) {
+                        console.log("AuthenticationFailed: " + response);
+                        return Observable.of(ActionResult.newActionResult().setSuccess(false)
+                            .setResult(new ValidationError("AZSERVICEBUSCONN-1005", "Connection Authentication error: " + response.message)));
                     }
                 }
-                else {
-                        return Observable.of(ActionResult.newActionResult().setSuccess(false)
-                            .setResult(new ValidationError("AZSERVICEBUSCONN-1002", "Connection Authentication error: " + response.statusText + ": Check your connection parameters")));
-                }
-                }
-                else if (response instanceof Error) {
-                    console.log("AuthenticationFailed: " + response);
-                    return Observable.of(ActionResult.newActionResult().setSuccess(false)
-                    .setResult(new ValidationError("AZSERVICEBUSCONN-1005", "Connection Authentication error: " + response.message)));
-                }
-            }
-            ));
+                ));
         }
     }
 
