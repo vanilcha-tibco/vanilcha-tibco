@@ -74,3 +74,8 @@ artifacts/artifacts.zip
 artifacts
 
 docs
+yarn-error.log
+package-lock.json
+
+src/app/go.opencensus.io/*
+src/app/go.uber.org/*
