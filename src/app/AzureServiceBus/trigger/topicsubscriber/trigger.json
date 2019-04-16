@@ -52,6 +52,14 @@
           }
         },
         {
+          "name": "sessionId",
+          "type": "string",
+          "display": {
+            "name": "Session Name",
+            "description": "Name of the Session for the Topic to subscribe"
+          }
+        },
+        {
           "name": "valueType",
           "type": "string",
           "display": {

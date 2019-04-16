@@ -41,14 +41,56 @@ type SBTopicSubscriberTrigger struct {
 type TopicSubscriber struct {
 	handler             *trigger.Handler
 	topic               *servicebus.Topic
-	listenerHandler     *servicebus.ListenerHandle
+	stepSessionHandler  StepSessionHandler
 	subscription        *servicebus.Subscription
 	listenctxCancelFunc context.CancelFunc
 	topicName           string
 	subscriptionName    string
+	sessionID           string
 	connString          string
 	valueType           string
 	done                chan bool
+}
+
+// StepSessionHandler is a comment
+type StepSessionHandler struct {
+	messageSession   *servicebus.MessageSession
+	valueType        string
+	topicName        string
+	subscriptionName string
+	handler          *trigger.Handler
+}
+
+// Start is called when a new session is started
+func (ssh *StepSessionHandler) Start(ms *servicebus.MessageSession) error {
+	ssh.messageSession = ms
+	if ssh.messageSession.SessionID() != nil {
+		log.Debugf("Begin session: ", *ssh.messageSession.SessionID())
+	} else {
+		log.Debugf("Begin listening to all sessions for the subscription: ", ssh.subscriptionName)
+	}
+
+	return nil
+}
+
+// Handle is called when a new session message is received
+func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Message) error {
+	err2 := ssh.processMessage(msg, ssh.handler, ssh.valueType, ssh.topicName, ssh.subscriptionName)
+	if err2 == nil {
+		return msg.Complete(ctx)
+	}
+	return msg.Abandon(ctx)
+}
+
+// End is called when the message session is closed. Service Bus will not automatically end your message session. Be
+// sure to know when to terminate your own session.
+func (ssh *StepSessionHandler) End() {
+	if ssh.messageSession.SessionID() != nil {
+		log.Debugf("End session: ", *ssh.messageSession.SessionID())
+	} else {
+		log.Debugf("End session handler for all sessions: ")
+	}
+	log.Debugf("")
 }
 
 // Initialize SBTopicSubscriberTrigger
@@ -63,7 +105,9 @@ func (t *SBTopicSubscriberTrigger) Initialize(ctx trigger.InitContext) error {
 
 		topicName := handler.GetStringSetting("topic")
 		subscriptionName := handler.GetStringSetting("subscriptionName")
+		sessionID := handler.GetStringSetting("sessionId")
 		valueType := handler.GetStringSetting("valueType")
+		//handler.
 		connStr := "Endpoint=sb://" + config.ResourceURI + ".servicebus.windows.net/;SharedAccessKeyName=" + config.AuthorizationRuleName + ";SharedAccessKey=" + config.PrimarysecondaryKey
 		trcvr := &TopicSubscriber{}
 		trcvr.handler = handler
@@ -71,6 +115,7 @@ func (t *SBTopicSubscriberTrigger) Initialize(ctx trigger.InitContext) error {
 		trcvr.topicName = topicName
 		trcvr.subscriptionName = subscriptionName
 		trcvr.valueType = valueType
+		trcvr.sessionID = sessionID
 		trcvr.done = make(chan bool)
 		t.topicSubscribers = append(t.topicSubscribers, trcvr)
 	}
@@ -118,7 +163,6 @@ func (t *SBTopicSubscriberTrigger) Start() error {
 		// Start subscribing on a separate Go routine so as to not block engine
 		go trcvr.subscribe()
 	}
-	log.Infof("Trigger - %s  started", t.config.Name)
 	return nil
 }
 
@@ -135,15 +179,16 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 	if te == nil {
 		return nil, fmt.Errorf("Topic with name %s not found on Namespace %s", topicName, ns.Name)
 	}
-	topic, err := ns.NewTopic(ctx, topicName)
+	topic, err := ns.NewTopic(topicName)
 	return topic, err
 }
 
 func getSubscription(ns *servicebus.Namespace, subscriptionName string, topicName *servicebus.Topic) (*servicebus.Subscription, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	//ctx, cancel := context.Background()
 	defer cancel()
 
-	sm, err := ns.NewSubscriptionManager(ctx, topicName.Name)
+	sm, err := ns.NewSubscriptionManager(topicName.Name)
 	se, err := sm.Get(ctx, subscriptionName)
 	if err != nil {
 		return nil, err
@@ -157,23 +202,40 @@ func getSubscription(ns *servicebus.Namespace, subscriptionName string, topicNam
 		}
 	}
 
-	subscription, err := topicName.NewSubscription(ctx, subscriptionName)
+	subscription, err := topicName.NewSubscription(subscriptionName)
 	return subscription, err
 }
 
 func (trcvr *TopicSubscriber) subscribe() {
-	//fmt.Println("Setting up subscriber...")
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	//ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	ctx, cancel := context.WithCancel(context.Background())
 	trcvr.listenctxCancelFunc = cancel
-	//defer cancel()
-	listenHandlesub, err := trcvr.subscription.Receive(ctx, func(ctx context.Context, message *servicebus.Message) servicebus.DispositionAction {
+	ss := &servicebus.SubscriptionSession{}
+	if trcvr.sessionID != "" {
+		ss = trcvr.subscription.NewSession(&trcvr.sessionID)
+	} else {
+		ss = trcvr.subscription.NewSession(nil)
+	}
+
+	ssh := &StepSessionHandler{}
+	ssh.valueType = trcvr.valueType
+	ssh.handler = trcvr.handler
+	ssh.topicName = trcvr.topicName
+	ssh.subscriptionName = trcvr.subscriptionName
+
+	trcvr.stepSessionHandler = *ssh
+
+	err := ss.ReceiveOne(ctx, ssh)
+
+	defer cancel()
+	/*listenHandlesub, err := trcvr.subscription.Receive(ctx, func(ctx context.Context, message *servicebus.Message) servicebus.DispositionAction {
 		err2 := trcvr.processMessage(message)
 		if err2 == nil {
 			return message.Complete()
 		}
 		return message.Abandon()
-	})
-	trcvr.listenerHandler = listenHandlesub
+	})*/
+	//trcvr.listenerHandler = listenHandlesub
 	//defer listenHandlesub.Close(context.Background())
 	if err != nil {
 		log.Error(err.Error())
@@ -190,15 +252,14 @@ func (trcvr *TopicSubscriber) subscribe() {
 
 }
 
-func (trcvr *TopicSubscriber) processMessage(msg *servicebus.Message) error {
-	// log.Infof("Processing record from Topic[%s], Partition[%d], Offset[%d]", msg.Topic, msg.Partition, msg.Offset)
+func (ssh *StepSessionHandler) processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, topicName string, subscriptionName string) error {
 	var outputRoot = map[string]interface{}{}
 	var brokerProperties = map[string]interface{}{}
 	outputData := make(map[string]interface{})
 
 	if msg.Data != nil {
-		deserVal := trcvr.valueType
-		if deserVal == "String" {
+		//deserVal := trcvr.valueType
+		if valueType == "String" {
 			text := string(msg.Data)
 			outputRoot["messageString"] = string(text)
 			brokerProperties["ContentType"] = msg.ContentType
@@ -218,17 +279,17 @@ func (trcvr *TopicSubscriber) processMessage(msg *servicebus.Message) error {
 
 			outputComplex := &data.ComplexObject{Metadata: "", Value: outputRoot}
 			outputData["output"] = outputComplex
-		} else if deserVal == "JSON" {
+		} else if valueType == "JSON" {
 			// future use
 		}
 	}
 
-	_, err := trcvr.handler.Handle(context.Background(), outputData)
+	_, err := handler.Handle(context.Background(), outputData)
 	if err != nil {
-		log.Errorf("Failed to process record from Topic [%s], due to error - %s", trcvr.topicName, err.Error())
+		log.Errorf("Failed to process record from Topic [%s], due to error - %s", topicName, err.Error())
 	} else {
 		// record is successfully processed.
-		log.Infof("Record from Topic [%s] for subscription [%s] is successfully processed", trcvr.topicName, trcvr.subscriptionName)
+		log.Infof("Record from Topic [%s] for subscription [%s] is successfully processed", topicName, subscriptionName)
 	}
 	return err
 }
@@ -243,7 +304,7 @@ func (t *SBTopicSubscriberTrigger) Stop() error {
 		log.Debugf("About to close ListenerHandler for Topic [%s] and it's subscription [%s]", trcvr.topicName, trcvr.subscriptionName)
 		select {
 		case <-time.After(2 * time.Second):
-			trcvr.listenerHandler.Close(context.Background())
+			trcvr.stepSessionHandler.messageSession.Close()
 		}
 		trcvr.listenctxCancelFunc()
 	}
