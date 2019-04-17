@@ -65,9 +65,9 @@ type StepSessionHandler struct {
 func (ssh *StepSessionHandler) Start(ms *servicebus.MessageSession) error {
 	ssh.messageSession = ms
 	if ssh.messageSession.SessionID() != nil {
-		log.Infof("Begin session: ", *ssh.messageSession.SessionID())
+		log.Infof("Begin session: %s", *ssh.messageSession.SessionID())
 	} else {
-		log.Infof("Begin listening to all sessions for the subscription: ", ssh.subscriptionName)
+		log.Infof("Begin listening to all sessions for the subscription: %s", ssh.subscriptionName)
 	}
 
 	return nil
@@ -86,9 +86,9 @@ func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Messa
 // sure to know when to terminate your own session.
 func (ssh *StepSessionHandler) End() {
 	if ssh.messageSession.SessionID() != nil {
-		log.Infof("End session: ", *ssh.messageSession.SessionID())
+		log.Infof("End session: %s", *ssh.messageSession.SessionID())
 	} else {
-		log.Infof("End session handler for all sessions: ")
+		log.Infof("End session handler for all sessions ")
 	}
 	log.Debugf("")
 }
@@ -226,30 +226,17 @@ func (trcvr *TopicSubscriber) subscribe() {
 	trcvr.stepSessionHandler = ssh
 
 	err := ss.ReceiveOne(ctx, ssh)
-
-	defer cancel()
-	/*listenHandlesub, err := trcvr.subscription.Receive(ctx, func(ctx context.Context, message *servicebus.Message) servicebus.DispositionAction {
-		err2 := trcvr.processMessage(message)
-		if err2 == nil {
-			return message.Complete()
-		}
-		return message.Abandon()
-	})*/
-	//trcvr.listenerHandler = listenHandlesub
-	//defer listenHandlesub.Close(context.Background())
 	if err != nil {
 		log.Error(err.Error())
 		return
 	}
 
-	//fmt.Println("I am listening...")
 	log.Infof("TopicSubscriber is now subscribed to Topic [%s] with Subscription [%s]", trcvr.topicName, trcvr.subscriptionName)
-	select {
+	/*select {
 	case <-trcvr.done:
 		log.Infof("Subscription to Topic [%s] is stopped as the Trigger was stopped ", trcvr.topicName)
 		return
-	}
-
+	}*/
 }
 
 func (ssh *StepSessionHandler) processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, topicName string, subscriptionName string) error {
@@ -299,12 +286,10 @@ func (t *SBTopicSubscriberTrigger) Stop() error {
 	log.Infof("Stopping Trigger - %s", t.config.Name)
 	for _, trcvr := range t.topicSubscribers {
 		// Stop polling
-		trcvr.done <- true
-		//fmt.Println("closing after 2 seconds")
-		log.Infof("About to close ListenerHandler for Topic [%s] and it's subscription [%s]", trcvr.topicName, trcvr.subscriptionName)
+		//trcvr.done <- true
+		log.Debugf("About to close ListenerHandler for Topic [%s] and it's subscription [%s]", trcvr.topicName, trcvr.subscriptionName)
 		select {
 		case <-time.After(2 * time.Second):
-			//fmt.Printf("Printing trcvr ssh object value here... ", trcvr.stepSessionHandler.)
 			trcvr.stepSessionHandler.messageSession.Close()
 		}
 		trcvr.listenctxCancelFunc()

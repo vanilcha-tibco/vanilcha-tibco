@@ -64,7 +64,7 @@ type StepSessionHandler struct {
 func (ssh *StepSessionHandler) Start(ms *servicebus.MessageSession) error {
 	ssh.messageSession = ms
 	if ssh.messageSession.SessionID() != nil {
-		log.Infof("Begin session: ", *ssh.messageSession.SessionID())
+		log.Infof("Begin session: %s", *ssh.messageSession.SessionID())
 	} else {
 		log.Infof("Begin listening to all sessions for the queue: ", ssh.queueName)
 	}
@@ -85,7 +85,7 @@ func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Messa
 // sure to know when to terminate your own session.
 func (ssh *StepSessionHandler) End() {
 	if ssh.messageSession.SessionID() != nil {
-		log.Infof("End session: ", *ssh.messageSession.SessionID())
+		log.Infof("End session: %s", *ssh.messageSession.SessionID())
 	} else {
 		log.Infof("End session handler for all sessions: ")
 	}
@@ -190,7 +190,6 @@ func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*
 }
 
 func (qrcvr *QueueReceiver) listen() {
-	//fmt.Println("Setting up listener...")
 	//ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -216,16 +215,13 @@ func (qrcvr *QueueReceiver) listen() {
 		return
 	}
 
-	defer cancel()
-
-	//fmt.Println("I am listening...")
 	log.Infof("QueueReceiver is now polling on Queue [%s]", qrcvr.queueName)
-	select {
+	/*select {
 	case <-qrcvr.done:
 		log.Debugf("Polling on Queue [%s] is stopped as the Trigger was stopped ", qrcvr.queueName)
 		// Exit
 		return
-	}
+	}*/
 
 }
 
@@ -277,8 +273,7 @@ func (t *SBQueueReceiverTrigger) Stop() error {
 	log.Infof("Stopping Trigger - %s", t.config.Name)
 	for _, qrcvr := range t.queueReceivers {
 		// Stop polling
-		qrcvr.done <- true
-		//fmt.Println("closing after 2 seconds")
+		//qrcvr.done <- true
 		log.Debugf("About to close ListenerHandler for Queue [%s]", qrcvr.queueName)
 		select {
 		case <-time.After(2 * time.Second):
