@@ -50,6 +50,7 @@ type QueueReceiver struct {
 	valueType           string
 	receiveMode         string
 	done                chan bool
+	isSession           bool
 }
 
 // StepSessionHandler is a comment
@@ -74,7 +75,7 @@ func (ssh *StepSessionHandler) Start(ms *servicebus.MessageSession) error {
 
 // Handle is called when a new session message is received
 func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Message) error {
-	err2 := ssh.processMessage(msg, ssh.handler, ssh.valueType, ssh.queueName)
+	err2 := processMessage(msg, ssh.handler, ssh.valueType, ssh.queueName)
 	if err2 == nil {
 		return msg.Complete(ctx)
 	}
@@ -85,11 +86,10 @@ func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Messa
 // sure to know when to terminate your own session.
 func (ssh *StepSessionHandler) End() {
 	if ssh.messageSession.SessionID() != nil {
-		log.Infof("End session: %s", *ssh.messageSession.SessionID())
+		log.Infof("Ending session: %s", *ssh.messageSession.SessionID())
 	} else {
-		log.Infof("End session handler for all sessions: ")
+		log.Infof("Ending session handler for all sessions: ")
 	}
-	log.Debugf("")
 }
 
 // Initialize QueueReceiverTrigger
@@ -137,20 +137,19 @@ func (t *SBQueueReceiverTrigger) Metadata() *trigger.Metadata {
 // Start implements trigger.Trigger.Start
 func (t *SBQueueReceiverTrigger) Start() error {
 	log.Infof("Starting Trigger - %s", t.config.Name)
-
 	for _, qrcvr := range t.queueReceivers {
-
 		ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(qrcvr.connString))
 		if err != nil {
 			log.Error(err.Error())
 			return err
 		}
-		q, err := getQueue(ns, qrcvr.queueName, qrcvr.receiveMode)
+		q, isSession, err := getQueue(ns, qrcvr.queueName, qrcvr.receiveMode)
 		if err != nil {
 			log.Error(err.Error())
 			return err
 		}
 		qrcvr.q = q
+		qrcvr.isSession = isSession
 		// Start polling on a separate Go routine so as to not block engine
 		go qrcvr.listen()
 	}
@@ -158,7 +157,7 @@ func (t *SBQueueReceiverTrigger) Start() error {
 	return nil
 }
 
-func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*servicebus.Queue, error) {
+func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*servicebus.Queue, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
@@ -166,66 +165,67 @@ func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*
 	qe, err := qm.Get(ctx, queueName)
 	if err != nil {
 		log.Error(err.Error())
-		return nil, err
+		return nil, false, err
 	}
 
 	if qe == nil {
 		_, err := qm.Put(ctx, queueName)
 		if err != nil {
 			log.Error(err.Error())
-			return nil, err
+			return nil, false, err
 		}
 	}
+	isSession := *qe.QueueDescription.RequiresSession
+
 	if receiveMode == "ReceiveAndDelete" {
-		//fmt.Println("receiveMode for QueueReceiver is set to ReceiveAndDelete")
 		log.Debugf("Using receiveMode ReceiveAndDelete to create queue %s", queueName)
 		q, err := ns.NewQueue(queueName, servicebus.QueueWithReceiveAndDelete())
-		return q, err
+		return q, isSession, err
 	}
-	//fmt.Println("receiveMode for QueueReceiver is PeekLock")
 	log.Debugf("Using receiveMode PeekLock to create queue %s", queueName)
 	q, err := ns.NewQueue(queueName)
-	return q, err
+	return q, isSession, err
 
 }
 
 func (qrcvr *QueueReceiver) listen() {
-	//ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	ctx, cancel := context.WithCancel(context.Background())
 
+	ctx, cancel := context.WithCancel(context.Background())
 	qrcvr.listenctxCancelFunc = cancel
 	queueSession := &servicebus.QueueSession{}
-	if qrcvr.sessionID != "" {
-		queueSession = qrcvr.q.NewSession(&qrcvr.sessionID)
+	var err error
+
+	if qrcvr.isSession {
+		log.Infof("QueueReceiver will now poll on Queue [%s] which has session support", qrcvr.queueName)
+		if qrcvr.sessionID != "" {
+			queueSession = qrcvr.q.NewSession(&qrcvr.sessionID)
+		} else {
+			queueSession = qrcvr.q.NewSession(nil)
+		}
+		ssh := &StepSessionHandler{}
+		ssh.valueType = qrcvr.valueType
+		ssh.handler = qrcvr.handler
+		ssh.queueName = qrcvr.queueName
+		qrcvr.stepSessionHandler = ssh
+		err = queueSession.ReceiveOne(ctx, ssh)
 	} else {
-		queueSession = qrcvr.q.NewSession(nil)
+		log.Infof("QueueReceiver will now poll on Queue [%s] which does not have session support", qrcvr.queueName)
+		err = qrcvr.q.Receive(ctx, servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
+			err2 := processMessage(message, qrcvr.handler, qrcvr.valueType, qrcvr.queueName)
+			if err2 == nil {
+				return message.Complete(ctx)
+			}
+			return message.Abandon(ctx)
+		}))
 	}
-
-	ssh := &StepSessionHandler{}
-	ssh.valueType = qrcvr.valueType
-	ssh.handler = qrcvr.handler
-	ssh.queueName = qrcvr.queueName
-
-	qrcvr.stepSessionHandler = ssh
-
-	err := queueSession.ReceiveOne(ctx, ssh)
-
 	if err != nil {
 		log.Error(err.Error())
 		return
 	}
 
-	log.Infof("QueueReceiver is now polling on Queue [%s]", qrcvr.queueName)
-	/*select {
-	case <-qrcvr.done:
-		log.Debugf("Polling on Queue [%s] is stopped as the Trigger was stopped ", qrcvr.queueName)
-		// Exit
-		return
-	}*/
-
 }
 
-func (ssh *StepSessionHandler) processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, queueName string) error {
+func processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, queueName string) error {
 	// log.Infof("Processing record from Topic[%s], Partition[%d], Offset[%d]", msg.Topic, msg.Partition, msg.Offset)
 	var outputRoot = map[string]interface{}{}
 	var brokerProperties = map[string]interface{}{}
@@ -272,14 +272,17 @@ func (ssh *StepSessionHandler) processMessage(msg *servicebus.Message, handler *
 func (t *SBQueueReceiverTrigger) Stop() error {
 	log.Infof("Stopping Trigger - %s", t.config.Name)
 	for _, qrcvr := range t.queueReceivers {
-		// Stop polling
-		//qrcvr.done <- true
 		log.Debugf("About to close ListenerHandler for Queue [%s]", qrcvr.queueName)
 		select {
 		case <-time.After(2 * time.Second):
-			qrcvr.stepSessionHandler.messageSession.Close()
+			if qrcvr.isSession {
+				qrcvr.stepSessionHandler.messageSession.Close()
+				qrcvr.listenctxCancelFunc()
+			} else {
+				qrcvr.listenctxCancelFunc()
+				//qrcvr.q.Close(context.Background())
+			}
 		}
-		qrcvr.listenctxCancelFunc()
 	}
 
 	log.Infof("Trigger - %s  stopped", t.config.Name)
