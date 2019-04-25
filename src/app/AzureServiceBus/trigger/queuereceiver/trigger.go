@@ -168,13 +168,13 @@ func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*
 		return nil, false, err
 	}
 
-	if qe == nil {
-		_, err := qm.Put(ctx, queueName)
-		if err != nil {
-			log.Error(err.Error())
-			return nil, false, err
-		}
-	}
+	// if qe == nil {
+	// 	_, err := qm.Put(ctx, queueName)
+	// 	if err != nil {
+	// 		log.Error(err.Error())
+	// 		return nil, false, err
+	// 	}
+	// }
 	isSession := *qe.QueueDescription.RequiresSession
 
 	if receiveMode == "ReceiveAndDelete" {
