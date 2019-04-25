@@ -50,6 +50,7 @@ type TopicSubscriber struct {
 	connString          string
 	valueType           string
 	done                chan bool
+	isSession           bool
 }
 
 // StepSessionHandler is a comment
@@ -75,7 +76,7 @@ func (ssh *StepSessionHandler) Start(ms *servicebus.MessageSession) error {
 
 // Handle is called when a new session message is received
 func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Message) error {
-	err2 := ssh.processMessage(msg, ssh.handler, ssh.valueType, ssh.topicName, ssh.subscriptionName)
+	err2 := processMessage(msg, ssh.handler, ssh.valueType, ssh.topicName, ssh.subscriptionName)
 	if err2 == nil {
 		return msg.Complete(ctx)
 	}
@@ -86,11 +87,10 @@ func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Messa
 // sure to know when to terminate your own session.
 func (ssh *StepSessionHandler) End() {
 	if ssh.messageSession.SessionID() != nil {
-		log.Infof("End session: %s", *ssh.messageSession.SessionID())
+		log.Infof("Ending session: %s", *ssh.messageSession.SessionID())
 	} else {
-		log.Infof("End session handler for all sessions ")
+		log.Infof("Ending session handler for all sessions ")
 	}
-	log.Debugf("")
 }
 
 // Initialize SBTopicSubscriberTrigger
@@ -153,13 +153,14 @@ func (t *SBTopicSubscriberTrigger) Start() error {
 			log.Error(err.Error())
 			return err
 		}
-		subsc, err := getSubscription(ns, trcvr.subscriptionName, topic)
+		subsc, isSession, err := getSubscription(ns, trcvr.subscriptionName, topic)
 		if err != nil {
 			log.Error("Failed to build a new subscription named %s due to error: %s", trcvr.subscriptionName, err.Error())
 			return err
 		}
 		trcvr.topic = topic
 		trcvr.subscription = subsc
+		trcvr.isSession = isSession
 		// Start subscribing on a separate Go routine so as to not block engine
 		go trcvr.subscribe()
 	}
@@ -183,7 +184,7 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 	return topic, err
 }
 
-func getSubscription(ns *servicebus.Namespace, subscriptionName string, topicName *servicebus.Topic) (*servicebus.Subscription, error) {
+func getSubscription(ns *servicebus.Namespace, subscriptionName string, topicName *servicebus.Topic) (*servicebus.Subscription, bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	//ctx, cancel := context.Background()
 	defer cancel()
@@ -191,41 +192,52 @@ func getSubscription(ns *servicebus.Namespace, subscriptionName string, topicNam
 	sm, err := ns.NewSubscriptionManager(topicName.Name)
 	se, err := sm.Get(ctx, subscriptionName)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// If subscription does not exist with that name, create one with default subscription rules and options
-	if se == nil {
-		_, err := sm.Put(ctx, subscriptionName)
-		if err != nil {
-			return nil, err
-		}
-	}
-
+	// if se == nil {
+	// 	_, err := sm.Put(ctx, subscriptionName)
+	// 	if err != nil {
+	// 		return nil, false, err
+	// 	}
+	// }
+	isSession := *se.SubscriptionDescription.RequiresSession
 	subscription, err := topicName.NewSubscription(subscriptionName)
-	return subscription, err
+	return subscription, isSession, err
 }
 
 func (trcvr *TopicSubscriber) subscribe() {
-	//ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	ctx, cancel := context.WithCancel(context.Background())
 	trcvr.listenctxCancelFunc = cancel
 	ss := &servicebus.SubscriptionSession{}
-	if trcvr.sessionID != "" {
-		ss = trcvr.subscription.NewSession(&trcvr.sessionID)
+	var err error
+	if trcvr.isSession {
+		log.Infof("TopicSubscriber will now poll on subscription [%s] which has session support", trcvr.subscriptionName)
+		if trcvr.sessionID != "" {
+			ss = trcvr.subscription.NewSession(&trcvr.sessionID)
+		} else {
+			ss = trcvr.subscription.NewSession(nil)
+		}
+		ssh := &StepSessionHandler{}
+		ssh.valueType = trcvr.valueType
+		ssh.handler = trcvr.handler
+		ssh.topicName = trcvr.topicName
+		ssh.subscriptionName = trcvr.subscriptionName
+
+		trcvr.stepSessionHandler = ssh
+		err = ss.ReceiveOne(ctx, ssh)
 	} else {
-		ss = trcvr.subscription.NewSession(nil)
+		log.Infof("TopicSubscriber will now poll on subscription [%s] which does not have session support", trcvr.subscriptionName)
+		err = trcvr.subscription.Receive(ctx, servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
+			err2 := processMessage(message, trcvr.handler, trcvr.valueType, trcvr.topicName, trcvr.subscriptionName)
+			if err2 == nil {
+				return message.Complete(ctx)
+			}
+			return message.Abandon(ctx)
+		}))
 	}
 
-	ssh := &StepSessionHandler{}
-	ssh.valueType = trcvr.valueType
-	ssh.handler = trcvr.handler
-	ssh.topicName = trcvr.topicName
-	ssh.subscriptionName = trcvr.subscriptionName
-
-	trcvr.stepSessionHandler = ssh
-
-	err := ss.ReceiveOne(ctx, ssh)
 	if err != nil {
 		log.Error(err.Error())
 		return
@@ -239,7 +251,7 @@ func (trcvr *TopicSubscriber) subscribe() {
 	}*/
 }
 
-func (ssh *StepSessionHandler) processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, topicName string, subscriptionName string) error {
+func processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, topicName string, subscriptionName string) error {
 	var outputRoot = map[string]interface{}{}
 	var brokerProperties = map[string]interface{}{}
 	outputData := make(map[string]interface{})
@@ -285,14 +297,19 @@ func (ssh *StepSessionHandler) processMessage(msg *servicebus.Message, handler *
 func (t *SBTopicSubscriberTrigger) Stop() error {
 	log.Infof("Stopping Trigger - %s", t.config.Name)
 	for _, trcvr := range t.topicSubscribers {
-		// Stop polling
-		//trcvr.done <- true
 		log.Debugf("About to close ListenerHandler for Topic [%s] and it's subscription [%s]", trcvr.topicName, trcvr.subscriptionName)
 		select {
 		case <-time.After(2 * time.Second):
-			trcvr.stepSessionHandler.messageSession.Close()
+			//	trcvr.stepSessionHandler.messageSession.Close()
+			if trcvr.isSession {
+				trcvr.stepSessionHandler.messageSession.Close()
+				trcvr.listenctxCancelFunc()
+			} else {
+				trcvr.listenctxCancelFunc()
+				//qrcvr.q.Close(context.Background())
+			}
+
 		}
-		trcvr.listenctxCancelFunc()
 	}
 
 	log.Infof("Trigger - %s  stopped", t.config.Name)
