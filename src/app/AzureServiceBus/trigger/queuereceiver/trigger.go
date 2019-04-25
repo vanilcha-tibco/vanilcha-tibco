@@ -67,7 +67,7 @@ func (ssh *StepSessionHandler) Start(ms *servicebus.MessageSession) error {
 	if ssh.messageSession.SessionID() != nil {
 		log.Infof("Begin session: %s", *ssh.messageSession.SessionID())
 	} else {
-		log.Infof("Begin listening to all sessions for the queue: ", ssh.queueName)
+		log.Infof("Begin listening to all sessions for the queue: %s", ssh.queueName)
 	}
 
 	return nil
