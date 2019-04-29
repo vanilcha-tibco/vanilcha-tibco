@@ -39,7 +39,8 @@
           "required": true,
           "display": {
             "name": "Queue",
-            "description": "Name of the Queue to keep receiving message from"
+            "description": "Name of the Queue to keep receiving message from",
+            "appPropertySupport": true
           }
         },
         {
@@ -47,7 +48,8 @@
           "type": "string",
           "display": {
             "name": "Session Name",
-            "description": "Name of the Session in the Queue to keep receiving message from"
+            "description": "Name of the Session in the Queue to keep receiving message from",
+            "appPropertySupport": true
           }
         },
         {
