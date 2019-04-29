@@ -37,7 +37,8 @@
       "display": {
         "name": "Service Bus Namespace",
         "description": "Provide the Namespace name without prefix .servicebus.windows.net",
-        "visible": true
+        "visible": true,
+        "appPropertySupport": true
       }
     },
     {
@@ -46,7 +47,8 @@
       "required": true,
       "display": {
         "name": "Authorization Rule Name",
-        "visible": true        
+        "visible": true,
+        "appPropertySupport": true
       }
     },   
     {
@@ -57,7 +59,8 @@
           "name": "Primary/Secondary Key",
           "visible": true,
           "type": "password",
-          "encryptable":true
+          "encryptable":true,
+          "appPropertySupport": true
       }
     },       
     {

@@ -83,8 +83,12 @@ func init() {
 // connection with the zoho. If a connection with the same id as in the context is
 // present in the cache, that connection from the cache is returned
 func GetConnection(connector interface{}) (connection *Connection, err error) {
+	genericConn, err := generic.NewConnection(connector)
+	if err != nil {
+		return nil, errors.New("Failed to load AzureServiceBus connection configuration")
+	}
 	connectionObject := connector.(map[string]interface{})
-	settings := connectionObject["settings"]
+	//settings := connectionObject["settings"]
 
 	id := connectionObject["id"].(string)
 	connection = cachedConnection[id]
@@ -93,8 +97,22 @@ func GetConnection(connector interface{}) (connection *Connection, err error) {
 	}
 
 	connection = &Connection{}
-	connection.read(settings)
-
+	//connection.read(settings)
+	connection.baseURL, err = data.CoerceToString(genericConn.GetSetting("resourceURI"))
+	if err != nil {
+		return nil, fmt.Errorf("connection getter for resourceURI failed: %s", err)
+	}
+	log.Debugf("getconnection processed resourceURI: %s", connection.baseURL)
+	connection.authruleName, err = data.CoerceToString(genericConn.GetSetting("authorizationRuleName"))
+	if err != nil {
+		return nil, fmt.Errorf("connection getter for authorizationRuleName failed: %s", err)
+	}
+	log.Debugf("getconnection processed authorizationRuleName: %s", connection.authruleName)
+	connection.sharedkey, err = data.CoerceToString(genericConn.GetSetting("primarysecondaryKey"))
+	if err != nil {
+		return nil, fmt.Errorf("connection getter for primarysecondaryKey failed: %s", err)
+	}
+	log.Debugf("getconnection processed primarysecondaryKey: %s", connection.sharedkey)
 	cachedConnection[id] = connection
 	return connection, nil
 
