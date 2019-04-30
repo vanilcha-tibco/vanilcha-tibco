@@ -40,3 +40,8 @@
 * WIAZSB-91 Topic Subscriber does not get triggered for Topic subscriptions with session enabled false Defect Ravi Gupta
 * WIAZSB-82 Extra string shown in the log messages on starting QueueReceiver without session name Defect Ravi Gupta
 * WIAZSB-81 Queue Receiver does not get triggered for queue with session enabled false Defect Balaji Venkatamohan
+
+## Fixed in 1.1.0.V4
+
+* WIAZSB-93 [JetBlue]: Ability to use App Properties in Service Bus Trigger fields Task Ravi Gupta
+* WIAZSB-92 [JetBlue]: Ability to use App Properties in Connection Fields in the Connection Task Balaji Venkatamohan
