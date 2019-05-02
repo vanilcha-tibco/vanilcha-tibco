@@ -45,3 +45,7 @@
 
 * WIAZSB-93 [JetBlue]: Ability to use App Properties in Service Bus Trigger fields Task Ravi Gupta
 * WIAZSB-92 [JetBlue]: Ability to use App Properties in Connection Fields in the Connection Task Balaji Venkatamohan
+
+## Fixed in 1.1.0.V5
+
+* WIAZSB-96 V4 build is missing changes to connection for supporting app properties Defect Balaji Venkatamohan
