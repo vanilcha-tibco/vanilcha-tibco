@@ -24,6 +24,7 @@ export namespace JsonSchema {
                         "Label": {"type" : "string"},
                         "PartitionKey": {"type" : "string"},
                         "ReplyTo": {"type" : "string"},
+                        "SessionId": {"type" : "string"},
                         "TimeToLive": { "type" : "integer"},
                         "To": {"type" : "string"}
                     }
@@ -50,6 +51,7 @@ export namespace JsonSchema {
                         "Label": {"type" : "string"},
                         "PartitionKey": {"type" : "string"},
                         "ReplyTo": {"type" : "string"},
+                        "SessionId": {"type" : "string"},
                         "TimeToLive": { "type" : "integer"},
                         "To": {"type" : "string"}
                     }

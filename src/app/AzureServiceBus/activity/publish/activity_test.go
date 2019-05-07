@@ -149,9 +149,9 @@ func TestPublishMessagetoQueue(t *testing.T) {
 
 	var inputParams interface{}
 	var inputJSON = []byte(`{"parameters":{
-		"queueName": "jbqueue3",
+		"queueName": "queue1",
 		"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message now.</string>",
-		"brokerProperties":{"Label":"Test","SessionId":"testSession"}	
+		"brokerProperties":{"Label":"Test","SessionId":"12"}	
 		}	
 	}`)
 
@@ -203,8 +203,9 @@ func TestPublishMessagetoTopic(t *testing.T) {
 
 	var inputParams interface{}
 	var inputJSON = []byte(`{"parameters" :{
-			"topicName": "",
-			"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>"
+			"topicName": "topic1",
+			"messageString":"<string xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/\">This is a test message.</string>,
+			"SessionId":""
 			}			
 		}`)
 

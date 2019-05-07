@@ -154,8 +154,7 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 		inputparamtersmap[k] = fmt.Sprint(v)
 	}
 
-	log.Info("Contacting Backend Servicebus System[] to send message to " + objectType + " :" + entityName)
-	log.Info("before creating the request")
+	//	log.Info("before creating the request")
 
 	connStr := "Endpoint=sb://" + connection.baseURL + ".servicebus.windows.net/;SharedAccessKeyName=" + connection.authruleName + ";SharedAccessKey=" + connection.sharedkey
 	ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connStr))
@@ -206,7 +205,7 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	// session support
 	if publishInput.BrokerProperties.SessionId != "" {
 		reqmessage.SessionID = &publishInput.BrokerProperties.SessionId
-		fmt.Println("sessionid ", publishInput.BrokerProperties.SessionId)
+		//	fmt.Println("sessionid ", publishInput.BrokerProperties.SessionId)
 	}
 	if objectType == "Queue" {
 		if inputparamtersmap["queueName"] != nil && inputparamtersmap["queueName"].(string) != "" {
@@ -216,6 +215,11 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 			return nil, fmt.Errorf("Queue Name cannot be empty %s", "")
 			// queryURL = connection.baseURL + "/" + objectName + "/messages"
 			// entityName = objectName
+		}
+		if publishInput.BrokerProperties.SessionId != "" {
+			log.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName + " with sessionId " + publishInput.BrokerProperties.SessionId)
+		} else {
+			log.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName)
 		}
 
 		q, err := getQueue(ns, entityName)
@@ -240,6 +244,12 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 			return nil, fmt.Errorf("Topic Name cannot be empty %s", "")
 			// queryURL = connection.baseURL + "/" + objectName + "/messages"
 			// entityName = objectName
+		}
+
+		if publishInput.BrokerProperties.SessionId != "" {
+			log.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName + " with sessionId " + publishInput.BrokerProperties.SessionId)
+		} else {
+			log.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName)
 		}
 		t, err := getTopic(ns, entityName)
 		if err != nil {
@@ -309,6 +319,19 @@ func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, er
 	defer cancel()
 
 	qm := ns.NewQueueManager()
+	queList, err := qm.List(ctx)
+	queNotExist := true
+	for _, entry := range queList {
+		//	fmt.Println(idx, " ", entry.Name)
+		if queueName == entry.Name {
+			//	log.Info(queueName, " Queue found")
+			queNotExist = false
+			break
+		}
+	}
+	if queNotExist {
+		return nil, errors.New("Could not find the specified Queue")
+	}
 	qe, err := qm.Get(ctx, queueName)
 	if err != nil {
 		return nil, err
@@ -329,6 +352,19 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 	defer cancel()
 
 	tm := ns.NewTopicManager()
+	topicList, err := tm.List(ctx)
+	topicNotExist := true
+	for _, entry := range topicList {
+		//	fmt.Println(idx, " ", entry.Name)
+		if topicName == entry.Name {
+			//	log.Info(topicName, " Topic found")
+			topicNotExist = false
+			break
+		}
+	}
+	if topicNotExist {
+		return nil, errors.New("Could not find the specified Topic")
+	}
 	te, err := tm.Get(ctx, topicName)
 	if err != nil {
 		return nil, err

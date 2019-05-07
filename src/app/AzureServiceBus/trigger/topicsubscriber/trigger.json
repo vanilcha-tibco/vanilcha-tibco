@@ -57,8 +57,8 @@
           "name": "sessionId",
           "type": "string",
           "display": {
-            "name": "Session Name",
-            "description": "Name of the Session for the Topic to subscribe",
+            "name": "SessionId",
+            "description": "Id of the Session for the Topic to subscribe",
             "appPropertySupport": true
           }
         },

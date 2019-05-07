@@ -2,6 +2,7 @@ package topicsubscriber
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -76,7 +77,7 @@ func (ssh *StepSessionHandler) Start(ms *servicebus.MessageSession) error {
 
 // Handle is called when a new session message is received
 func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Message) error {
-	err2 := processMessage(msg, ssh.handler, ssh.valueType, ssh.topicName, ssh.subscriptionName)
+	err2 := processMessage(msg, ssh.handler, ssh.valueType, ssh.topicName, ssh.subscriptionName, true)
 	if err2 == nil {
 		return msg.Complete(ctx)
 	}
@@ -172,6 +173,18 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 	defer cancel()
 
 	tm := ns.NewTopicManager()
+	topicList, err := tm.List(ctx)
+	topicNotExist := true
+	for _, entry := range topicList {
+		//	fmt.Println(idx, " ", entry.Name)
+		if topicName == entry.Name {
+			topicNotExist = false
+			break
+		}
+	}
+	if topicNotExist {
+		return nil, errors.New("Could not find the specified Topic")
+	}
 	te, err := tm.Get(ctx, topicName)
 	if err != nil {
 		return nil, err
@@ -213,7 +226,7 @@ func (trcvr *TopicSubscriber) subscribe() {
 	ss := &servicebus.SubscriptionSession{}
 	var err error
 	if trcvr.isSession {
-		log.Infof("TopicSubscriber will now poll on subscription [%s] which has session support", trcvr.subscriptionName)
+		log.Infof("TopicSubscriber will now poll on subscription [%s] which has session support for topic [%s]", trcvr.subscriptionName, trcvr.topicName)
 		if trcvr.sessionID != "" {
 			ss = trcvr.subscription.NewSession(&trcvr.sessionID)
 		} else {
@@ -228,9 +241,9 @@ func (trcvr *TopicSubscriber) subscribe() {
 		trcvr.stepSessionHandler = ssh
 		err = ss.ReceiveOne(ctx, ssh)
 	} else {
-		log.Infof("TopicSubscriber will now poll on subscription [%s] which does not have session support", trcvr.subscriptionName)
+		log.Infof("TopicSubscriber will now poll on subscription [%s] which does not have session support for topic [%s]", trcvr.subscriptionName, trcvr.topicName)
 		err = trcvr.subscription.Receive(ctx, servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
-			err2 := processMessage(message, trcvr.handler, trcvr.valueType, trcvr.topicName, trcvr.subscriptionName)
+			err2 := processMessage(message, trcvr.handler, trcvr.valueType, trcvr.topicName, trcvr.subscriptionName, false)
 			if err2 == nil {
 				return message.Complete(ctx)
 			}
@@ -251,7 +264,7 @@ func (trcvr *TopicSubscriber) subscribe() {
 	}*/
 }
 
-func processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, topicName string, subscriptionName string) error {
+func processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, topicName string, subscriptionName string, isSession bool) error {
 	var outputRoot = map[string]interface{}{}
 	var brokerProperties = map[string]interface{}{}
 	outputData := make(map[string]interface{})
@@ -268,11 +281,15 @@ func processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType
 			//brokerPropertiesResp["MessageId"] = msg.ID
 			brokerProperties["PartitionKey"] = &msg.SystemProperties.PartitionKey
 			brokerProperties["ReplyTo"] = msg.ReplyTo
+			if isSession {
+				brokerProperties["SessionId"] = *msg.SessionID
+			}
 			ttl := msg.TTL.String()
 			ttlint, _ := strconv.Atoi(ttl)
 			brokerProperties["TimeToLive"] = ttlint
 			brokerProperties["To"] = msg.To
 			//brokerPropertiesResp["ViaPartitionKey"] = msg.SystemProperties.ViaPartitionKey
+			//	log.Info("message received  data ", string(msg.Data), " sessionid ", msg.ID, " : ", *msg.SessionID)
 			complexBrokerProperties := &data.ComplexObject{Metadata: "", Value: brokerProperties}
 			outputRoot["brokerProperties"] = complexBrokerProperties.Value
 

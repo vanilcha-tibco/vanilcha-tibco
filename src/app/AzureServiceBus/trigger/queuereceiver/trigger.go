@@ -2,6 +2,7 @@ package queuereceiver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -75,7 +76,7 @@ func (ssh *StepSessionHandler) Start(ms *servicebus.MessageSession) error {
 
 // Handle is called when a new session message is received
 func (ssh *StepSessionHandler) Handle(ctx context.Context, msg *servicebus.Message) error {
-	err2 := processMessage(msg, ssh.handler, ssh.valueType, ssh.queueName)
+	err2 := processMessage(msg, ssh.handler, ssh.valueType, ssh.queueName, true)
 	if err2 == nil {
 		return msg.Complete(ctx)
 	}
@@ -162,6 +163,18 @@ func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*
 	defer cancel()
 
 	qm := ns.NewQueueManager()
+	queList, err := qm.List(ctx)
+	queNotExist := true
+	for _, entry := range queList {
+		//	fmt.Println(idx, " ", entry.Name)
+		if queueName == entry.Name {
+			queNotExist = false
+			break
+		}
+	}
+	if queNotExist {
+		return nil, false, errors.New("Could not find the specified Queue")
+	}
 	qe, err := qm.Get(ctx, queueName)
 	if err != nil {
 		log.Error(err.Error())
@@ -211,7 +224,7 @@ func (qrcvr *QueueReceiver) listen() {
 	} else {
 		log.Infof("QueueReceiver will now poll on Queue [%s] which does not have session support", qrcvr.queueName)
 		err = qrcvr.q.Receive(ctx, servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
-			err2 := processMessage(message, qrcvr.handler, qrcvr.valueType, qrcvr.queueName)
+			err2 := processMessage(message, qrcvr.handler, qrcvr.valueType, qrcvr.queueName, false)
 			if err2 == nil {
 				return message.Complete(ctx)
 			}
@@ -225,7 +238,7 @@ func (qrcvr *QueueReceiver) listen() {
 
 }
 
-func processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, queueName string) error {
+func processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType string, queueName string, isSession bool) error {
 	// log.Infof("Processing record from Topic[%s], Partition[%d], Offset[%d]", msg.Topic, msg.Partition, msg.Offset)
 	var outputRoot = map[string]interface{}{}
 	var brokerProperties = map[string]interface{}{}
@@ -243,10 +256,15 @@ func processMessage(msg *servicebus.Message, handler *trigger.Handler, valueType
 			//brokerPropertiesResp["MessageId"] = msg.ID
 			brokerProperties["PartitionKey"] = &msg.SystemProperties.PartitionKey
 			brokerProperties["ReplyTo"] = msg.ReplyTo
+			//	log.Info("isssession  ", isSession, " and sessionid ", *msg.SessionID)
+			if isSession {
+				brokerProperties["SessionId"] = *msg.SessionID
+			}
 			ttl := msg.TTL.String()
 			ttlint, _ := strconv.Atoi(ttl)
 			brokerProperties["TimeToLive"] = ttlint
 			brokerProperties["To"] = msg.To
+			//	log.Info("message received  data ", string(msg.Data), " sessionid ", msg.ID, " : ", *msg.SessionID)
 			//brokerPropertiesResp["ViaPartitionKey"] = msg.SystemProperties.ViaPartitionKey
 			complexBrokerProperties := &data.ComplexObject{Metadata: "", Value: brokerProperties}
 			outputRoot["brokerProperties"] = complexBrokerProperties.Value
