@@ -49,3 +49,11 @@
 ## Fixed in 1.1.0.V5
 
 * WIAZSB-96 V4 build is missing changes to connection for supporting app properties Defect Balaji Venkatamohan
+
+## Fixed in 1.1.0.V6
+
+* WIAZSB-99 Show sessionId in output of Triggers under BrokerProperties Task Ravi Gupta
+* WIAZSB-98 Fix log messages for Publish activity and TopicSubscriber trigger Defect Ravi Gupta
+* WIAZSB-97 Change label of Settings tab field "Session Name" to "SessionId" for both triggers Defect Ravi Gupta
+* WIAZSB-95 Incorrect error when QueueReceiver Listening to Non-existing queue name but same name topic is existing Defect Balaji Venkatamohan
+* WIAZSB-94 Publisher activity sends message to queue when configured to send message to Topic with non-existing topic name but same name queue is existing Defect Ravi Gupta
