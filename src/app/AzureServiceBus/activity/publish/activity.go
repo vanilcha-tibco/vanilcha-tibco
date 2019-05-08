@@ -62,7 +62,7 @@ func (a *Activity) Eval(context activity.Context) (done bool, err error) {
 
 	responseData, err := connection.Call(entityType, entityName, inputData, methodName)
 	if err != nil {
-		return false, activity.NewError(fmt.Sprintf("Failed to perform Azure Service Bus publish message for %s, %s", "", err.Error()), "AZSERVICEBUS-PUBLISH-4014", nil)
+		return false, activity.NewError(fmt.Sprintf("Failed to perform Azure Service Bus publish message for %s, %s", entityType, err.Error()), "AZSERVICEBUS-PUBLISH-4014", nil)
 	}
 
 	outputComplex := &data.ComplexObject{Metadata: "", Value: responseData}

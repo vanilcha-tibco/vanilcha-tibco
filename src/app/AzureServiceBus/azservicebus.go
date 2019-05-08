@@ -225,7 +225,7 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 		q, err := getQueue(ns, entityName)
 		if err != nil {
 			if err != nil {
-				fmt.Printf("failed to fetch queue named %q\n", entityName)
+				log.Errorf("failed to fetch queue named %q\n", entityName)
 				actulaResponse.ResponseMessage = string(err.Error())
 				databytes, _ := json.Marshal(actulaResponse)
 				readError = err
@@ -253,7 +253,7 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 		}
 		t, err := getTopic(ns, entityName)
 		if err != nil {
-			fmt.Printf("failed to fetch topic named %q\n", entityName)
+			log.Errorf("failed to fetch topic named %q\n", entityName)
 			actulaResponse.ResponseMessage = string(err.Error())
 			databytes, _ := json.Marshal(actulaResponse)
 			readError = err
@@ -320,6 +320,9 @@ func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, er
 
 	qm := ns.NewQueueManager()
 	queList, err := qm.List(ctx)
+	if err != nil {
+		return nil, err
+	}
 	queNotExist := true
 	for _, entry := range queList {
 		//	fmt.Println(idx, " ", entry.Name)
@@ -330,7 +333,7 @@ func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, er
 		}
 	}
 	if queNotExist {
-		return nil, errors.New("Could not find the specified Queue")
+		return nil, errors.New("Could not find the specified Queue :" + queueName)
 	}
 	qe, err := qm.Get(ctx, queueName)
 	if err != nil {
@@ -338,6 +341,7 @@ func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, er
 	}
 	var q *servicebus.Queue
 	var queueError error
+	// need to test and remove below if else block
 	if qe != nil {
 		q, queueError = ns.NewQueue(queueName)
 	} else {
@@ -353,6 +357,9 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 
 	tm := ns.NewTopicManager()
 	topicList, err := tm.List(ctx)
+	if err != nil {
+		return nil, err
+	}
 	topicNotExist := true
 	for _, entry := range topicList {
 		//	fmt.Println(idx, " ", entry.Name)
@@ -363,7 +370,7 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 		}
 	}
 	if topicNotExist {
-		return nil, errors.New("Could not find the specified Topic")
+		return nil, errors.New("Could not find the specified Topic :" + topicName)
 	}
 	te, err := tm.Get(ctx, topicName)
 	if err != nil {
@@ -371,6 +378,7 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 	}
 	var t *servicebus.Topic
 	var topicError error
+	// need to test and remove below if else block
 	if te != nil {
 		// session support
 		//	t, topicError = ns.NewTopic(ctx, topicName)
