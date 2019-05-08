@@ -174,6 +174,9 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 
 	tm := ns.NewTopicManager()
 	topicList, err := tm.List(ctx)
+	if err != nil {
+		return nil, err
+	}
 	topicNotExist := true
 	for _, entry := range topicList {
 		//	fmt.Println(idx, " ", entry.Name)
@@ -183,7 +186,7 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 		}
 	}
 	if topicNotExist {
-		return nil, errors.New("Could not find the specified Topic")
+		return nil, errors.New("Could not find the specified Topic :" + topicName)
 	}
 	te, err := tm.Get(ctx, topicName)
 	if err != nil {

@@ -164,6 +164,9 @@ func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*
 
 	qm := ns.NewQueueManager()
 	queList, err := qm.List(ctx)
+	if err != nil {
+		return nil, false, err
+	}
 	queNotExist := true
 	for _, entry := range queList {
 		//	fmt.Println(idx, " ", entry.Name)
@@ -173,7 +176,7 @@ func getQueue(ns *servicebus.Namespace, queueName string, receiveMode string) (*
 		}
 	}
 	if queNotExist {
-		return nil, false, errors.New("Could not find the specified Queue")
+		return nil, false, errors.New("Could not find the specified Queue :" + queueName)
 	}
 	qe, err := qm.Get(ctx, queueName)
 	if err != nil {
