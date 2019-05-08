@@ -57,3 +57,8 @@
 * WIAZSB-97 Change label of Settings tab field "Session Name" to "SessionId" for both triggers Defect Ravi Gupta
 * WIAZSB-95 Incorrect error when QueueReceiver Listening to Non-existing queue name but same name topic is existing Defect Balaji Venkatamohan
 * WIAZSB-94 Publisher activity sends message to queue when configured to send message to Topic with non-existing topic name but same name queue is existing Defect Ravi Gupta
+
+## Fixed in 1.1.0.V7
+
+* WIAZSB-101 Fix for WIAZSB-94 and WIAZSB-95 is not propagating error from backend all the way to the application Defect Ravi Gupta
+* WIAZSB-100 Cleanup log messages for publish activity in case of any errors while publishing Defect Ravi Gupta
