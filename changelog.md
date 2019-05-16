@@ -62,3 +62,7 @@
 
 * WIAZSB-101 Fix for WIAZSB-94 and WIAZSB-95 is not propagating error from backend all the way to the application Defect Ravi Gupta
 * WIAZSB-100 Cleanup log messages for publish activity in case of any errors while publishing Defect Ravi Gupta
+
+## Fixed in 1.1.0.V8
+
+* WIAZSB-107 Remove os.Exit(1) from ServiceBus go code Defect Balaji Venkatamohan
