@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"git.tibco.com/git/product/ipaas/wi-contrib.git/connection/generic"
@@ -17,7 +16,7 @@ import (
 )
 
 type (
-	//Connection datastructure for storing zoho connection details
+	//Connection datastructure for storing AzureServiceBus connection details
 	Connection struct {
 		Name                           string
 		Description                    string
@@ -79,8 +78,8 @@ func init() {
 	cachedConnection = map[string]*Connection{}
 }
 
-// GetConnection returns a deserialized Zoho conneciton object it does not establish a
-// connection with the zoho. If a connection with the same id as in the context is
+// GetConnection returns a deserialized AzureServiceBus conneciton object it does not establish a
+// connection with the AzureServiceBus. If a connection with the same id as in the context is
 // present in the cache, that connection from the cache is returned
 func GetConnection(connector interface{}) (connection *Connection, err error) {
 	genericConn, err := generic.NewConnection(connector)
@@ -137,7 +136,7 @@ func (connection *Connection) read(settings interface{}) (err error) {
 	return
 }
 
-// doCall is a private implementation helper for making HTTP calls into the Zoho System
+// doCall is a private implementation helper for making HTTP calls into the AzureServiceBus System
 func (connection *Connection) doCall(objectType string, objectName string, inputData interface{}, methodName string) (responseData map[string]interface{}, err error) {
 	log.Info("Invoking Azure ServiceBus backend")
 	entityName := ""
@@ -159,8 +158,9 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	connStr := "Endpoint=sb://" + connection.baseURL + ".servicebus.windows.net/;SharedAccessKeyName=" + connection.authruleName + ";SharedAccessKey=" + connection.sharedkey
 	ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connStr))
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		//fmt.Println(err)
+		//log.Error(err)
+		return nil, fmt.Errorf("Namespace object could not be created by the SDK due to %s", err.Error())
 	}
 	readresponseData := make(map[string]interface{})
 	var readError error
@@ -224,14 +224,14 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 
 		q, err := getQueue(ns, entityName)
 		if err != nil {
-			if err != nil {
-				log.Errorf("failed to fetch queue named %q\n", entityName)
-				actulaResponse.ResponseMessage = string(err.Error())
-				databytes, _ := json.Marshal(actulaResponse)
-				readError = err
-				err = json.Unmarshal(databytes, &readresponseData)
-				return readresponseData, readError
-			}
+			//if err != nil {
+			log.Errorf("failed to fetch queue named %q\n", entityName)
+			actulaResponse.ResponseMessage = string(err.Error())
+			databytes, _ := json.Marshal(actulaResponse)
+			readError = err
+			err = json.Unmarshal(databytes, &readresponseData)
+			return readresponseData, readError
+			//}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
@@ -284,7 +284,7 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 
 }
 
-// Call makes an HTTP API call into the Zoho System
+// Call makes an HTTP API call into the AzureServiceBus System
 func (connection *Connection) Call(objectType string, objectName string, inputData interface{}, methodName string) (responseData map[string]interface{}, err error) {
 
 	maxRetries := 2
