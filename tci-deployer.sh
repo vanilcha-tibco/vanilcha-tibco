@@ -36,7 +36,7 @@ DEPLOYMENT_NAME=${DEPLOYMENT_NAME:-""}
 #  Override this if you want use an external folder, to keep your Docker build context clean.
 DEPLOYER_DATA=${DEPLOYER_DATA:-${PWD}}
 
-IMAGE_TAG='8987'
+IMAGE_TAG='9284'
 IMAGE_NAME='tci-deployer'
 IMAGE_URL=${IMAGE_URL:-"$SOURCE_REGISTRY/$IMAGE_NAME:$IMAGE_TAG"}
 CONTAINER_NAME=${CONTAINER_NAME:-"${DEPLOYMENT_NAME}${IMAGE_NAME}"}
