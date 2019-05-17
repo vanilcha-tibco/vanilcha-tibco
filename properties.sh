@@ -1,6 +1,6 @@
 IMAGE_NAME=wi-azservicebus
 CATEGORY=AzureServiceBus
-DOCS_ZIP=AzureServiceBus.zip
+DOCS_ZIP=Azure-Service-Bus.zip
 PRODUCT_ID=flogo-azservicebus
 VERSION=1.1.0
 JIRAID=WIAZSB
