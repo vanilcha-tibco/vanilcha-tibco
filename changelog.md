@@ -70,3 +70,6 @@
 ## Fixed in 1.1.0.V8
 
 * WIAZSB-107 Remove os.Exit(1) from ServiceBus go code Defect Balaji Venkatamohan
+
+## Fixed in 1.1.0.V9
+
