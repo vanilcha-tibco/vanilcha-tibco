@@ -9,11 +9,11 @@ var logger = baseAzureServiceBus.connectorsConfig.loggerFile;
 
 describe("Flogo AzureServiceBus", function () {
 
-    /*beforeAll(function () {
+    beforeAll(function () {
         baseWI.deleteAllApps();
         baseWI.deleteConnections('AzureServiceBusConnection');
 
-    });*/
+    });
 
 
     it("UC1 - App with one TopicSubscriber , Queue Reciever and a PublishActivity", function () {
