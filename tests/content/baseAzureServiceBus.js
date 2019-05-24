@@ -15,10 +15,23 @@ var baseAzureServiceBus = function () {
         return require('./page_objects/connectionModal/connectionModalMethods.js');
     };
 
+    this.flowdesignPageMethods = function () {
+        return require('./page_objects/flow_design_page/flowDesignPageMethods.js');
+    };
     this.AzureServiceBusPaletteMethods = function () {
         return require('./page_objects/Palette/PaletteMethods.js');
     };
 
+    this.commonActivityMethods = function () {
+        return require('../page_objects/activity_configurations/commonActivity/commonActivityMethods.js');
+    };
+    this.commonElements = function () {
+        return require('../page_objects/common/commonElements.js');
+    };
+
+    this.logMessageMethods = function () {
+        return require('../page_objects/activity_configurations/logMessage/logMessageMethods.js');
+    };
 
     // END - Functions exposed by the connector that can be used by others.
 
@@ -28,9 +41,9 @@ var baseAzureServiceBus = function () {
         description: "Tibco azureServiceBusConnection",
         username: process.env.Zuora_username || "gkchaitu279@dispostable.com",
         password: process.env.Zuora_password || "$Tibco2018$",
-        azureservicebusAuthRule: "AuthRule",
-        azureservicebusNameSpace: "ServicebusQA001",
-        azureservicebusKey: "eFxVfMG/8ssXCmm9BQFuEymrVnYpFvJWTxkr0nuXPQw=",
+        azureservicebusAuthRule: "golangtest",
+        azureservicebusNameSpace: "tibcojetblueexp",
+        azureservicebusKey: "vhMKaTQec0YkqLG5963xz8QEezJKpQ+unBxquWG9qMY=",
         isProduction: "false",
         operation_Publish: "Create Subscription",
         operation_Update_Subscription: "Update Subscription",
@@ -42,6 +55,9 @@ var baseAzureServiceBus = function () {
         , TopicSubscriber: 'AzureServiceBusTopicSubscriber'
         , QueueReceiver: 'AzureServiceBusQueueReceiver'
     };
+
+
+
 
     this.consecutiveConnectionDetails = {
         name: "Second_Zuora_connection",
