@@ -45,12 +45,13 @@ describe("Flogo AzureServiceBus", function () {
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().createAzureTopicSubscriber("AzureTopicSubscriber","AzureTopicSubscriberdescription","AzureServiceBusConnection","topicauto","subauto","sessionautotopic");
         //browser.driver.findElement(by.xpath("//div[contains(@data-flogo-node-type, 'node_add')]")).click();
-        baseWI.addAndConfigureLogMessage("non_rest_trigger", 'string.concat("TCM Receiver Msg: ", $flow.tcm_msg)', baseWI.logMessageMethods().logLevelType.Info);
+        //baseWI.addAndConfigureLogMessage("non_rest_trigger", 'string.concat("TCM Receiver Msg: ", $flow.tcm_msg)', baseWI.logMessageMethods().logLevelType.Info);
 
         //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.LogMessage);
         var logMessage2 = 'string.concat("TopicSubscriberOutput: ", utility.renderJSON($flow.output,boolean.true()))';
-        //var logMessage2= 'string.concat("TopicSubscriberOutput: ",$flow.output';
-        baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage2, baseWI.logMessageMethods().logLevelType.Info,"Trigger");
+        baseWI.addAndConfigureLogMessage("non_rest_trigger", logMessage2, baseWI.logMessageMethods().logLevelType.Info);
+
+        //baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage2, baseWI.logMessageMethods().logLevelType.Info,"Trigger");
         logger.info(logMessage2);
 
 
@@ -66,7 +67,9 @@ describe("Flogo AzureServiceBus", function () {
         //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.LogMessage);
         var logMessage1 = 'string.concat("QueueReceiverOutput: ", utility.renderJSON($flow.output,boolean.true()))';
         //var logMessage1= 'string.concat("QueueReceiverOutput: ",$flow.output';
-        baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage1, baseWI.logMessageMethods().logLevelType.Info,"Trigger");
+        baseWI.addAndConfigureLogMessage("non_rest_trigger", logMessage1, baseWI.logMessageMethods().logLevelType.Info);
+
+        //baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage1, baseWI.logMessageMethods().logLevelType.Info,"Trigger");
         logger.info(logMessage1);
 
 
@@ -112,8 +115,8 @@ describe("Flogo AzureServiceBus", function () {
         baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueTopic);
         var logMessage = 'string.concat(string.concat("QueueMessageOnPublish:",$activity[AzureServiceBusPublish].output.responseMessage),string.concat("TopicMessageOnPublish:",$activity[AzureServiceBusPublish1].output.responseMessage))';
 
-        //baseWI.addAndConfigureLogMessage("AzureServiceBusPublish1",logMessage, baseWI.commonElements().logLevelType.Info);
-        baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage, baseWI.logMessageMethods().logLevelType.Info,"AzureServiceBusPublish1");
+        baseWI.addAndConfigureLogMessage("AzureServiceBusPublish1",logMessage, baseWI.commonElements().logLevelType.Info);
+        //baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage, baseWI.logMessageMethods().logLevelType.Info,"AzureServiceBusPublish1");
         browser.sleep(2000);
         baseWI.appImplementationPageMethods().clickBackButton();
         baseWI.pushAppAndVerify(appName);
