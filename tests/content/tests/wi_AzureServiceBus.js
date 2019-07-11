@@ -6,13 +6,46 @@ var azureServiceBusConnection = baseAzureServiceBus.connectionDetails;
 var azureServiceBusSettings = baseAzureServiceBus.connectorsConfig;
 var baseWI = azureServiceBusSettings.baseWI;
 var logger = baseAzureServiceBus.connectorsConfig.loggerFile;
+var baseFE = azureServiceBusSettings.baseFE;
+var isFlogoEnterpriseEnabled = azureServiceBusSettings.settings.testingMode.isFlogoEnterpriseEnabled;
+var appTarget = azureServiceBusSettings.settings.appTarget;
+var dockerPort = azureServiceBusSettings.settings.dockerPort;
+
 
 describe("Flogo AzureServiceBus", function () {
+    var appNameToVerify = "";
+    var verifyEndpoints = false;
+    var endpoints = null;
+    var logMessages = [];
+    var appNames = "";
 
     beforeAll(function () {
         baseWI.deleteAllApps();
         baseWI.deleteConnections('AzureServiceBusConnection');
 
+    });
+
+    afterAll(function () {
+        baseWI.deleteAllApps();
+        baseWI.deleteConnections('AzureServiceBusConnection');
+
+    });
+
+    afterEach(function () {
+        if (isFlogoEnterpriseEnabled == 'true') {
+            baseFE.flogoEnterpriseMethods().startApps(appNames, appTarget, dockerPort,25);
+            if (verifyEndpoints) {
+                baseFE.flogoEnterpriseMethods().verifyEndpoints(endpoints);
+            }
+            baseFE.flogoEnterpriseMethods().verifyLogs(appNameToVerify, logMessages);
+            baseFE.flogoEnterpriseMethods().stopApps(appNames, appTarget);
+            logMessages = [];
+            endpoints = [];
+            appNames = null;
+            appNameToVerify = null;
+            baseWI.deleteAllApps();
+            baseFE.flogoEnterpriseMethods().cleanupTargetArtifacts();
+        }
     });
 
 
@@ -120,24 +153,41 @@ describe("Flogo AzureServiceBus", function () {
         browser.sleep(2000);
         baseWI.appImplementationPageMethods().clickBackButton();
         baseWI.pushAppAndVerify(appName);
-        baseWI.appsHomePageMethods().navigateToApp(appName);
-        browser.sleep(1000);
-
-        baseWI.appImplementationPageMethods().clickLogTab();
-        browser.findElement(by.id('tropos-interval-custom')).click();
-        browser.sleep(2000);
 
         var TopicSubscriberMessage = "TopicSubscriberOutput: ";
-        var QueueSubscriberMessage = "QueueRecieverOutput: ";
+        var QueueSubscriberMessage = "QueueReceiverOutput: ";
         //var PublishMessage = "QueueMessageOnPublish: /Published message to Queue : queueauto successfully / TopicMessageOnPublish: /Published message to Topic : topicauto successfully /";
 
-        baseWI.checkTextInLogs(TopicSubscriberMessage);
-        baseWI.checkTextInLogs(QueueSubscriberMessage);
-        baseWI.checkTextInLogs(messageStringValueTopic);
-        baseWI.checkTextInLogs(messageStringValueQueue);
-        baseWI.checkTextInLogs(sessionIdValueQueue);
-        baseWI.checkTextInLogs(sessionIdValueTopic);
+        if (isFlogoEnterpriseEnabled != 'true') {
+            baseWI.appsHomePageMethods().navigateToApp(appName);
+            browser.sleep(1000);
+            baseWI.appImplementationPageMethods().clickLogTab();
+            browser.findElement(by.id('tropos-interval-custom')).click();
+            browser.sleep(2000);
+            baseWI.checkTextInLogs(TopicSubscriberMessage);
+            baseWI.checkTextInLogs(QueueSubscriberMessage);
+            baseWI.checkTextInLogs(messageStringValueTopic);
+            baseWI.checkTextInLogs(messageStringValueQueue);
+            baseWI.checkTextInLogs(sessionIdValueQueue);
+            baseWI.checkTextInLogs(sessionIdValueTopic);
+        }
+        else {
+            appNames = appName;
+            appNameToVerify = appName;
+            logMessages = [];
+            verifyEndpoints = false;
+            endpoints = [];
+
+            logMessages.push(TopicSubscriberMessage);
+            logMessages.push(QueueSubscriberMessage);
+            logMessages.push(messageStringValueTopic);
+            logMessages.push(messageStringValueQueue);
+            logMessages.push(sessionIdValueQueue);
+            logMessages.push(sessionIdValueTopic);
+        }
+
+
+
 
     });
 });
-
