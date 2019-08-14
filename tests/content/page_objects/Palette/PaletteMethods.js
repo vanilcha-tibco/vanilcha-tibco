@@ -86,6 +86,7 @@ this.connectionSelectlistoption = function (option) {
         //browser.wait(EC.presenceOf(that.createFlowWindowElements().resourcePath()), 5000,"REST trigger flow UI did not appear on UI")
 
         baseWI.flowDesignPageMethods().clickAddTriggerButton();
+        baseWI.flowDesignPageMethods().clickSelectNewTriggerTab();
         baseWI.createFlowWindowMethods().selectTriggerType("AzureServiceBus QueueReceiver");
         that.selectConnectionInstance(connectionDetails.name);
         browser.sleep(5000);
