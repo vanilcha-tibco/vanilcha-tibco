@@ -1,0 +1,14 @@
+{
+    "validate_from": [{
+      "rest": {
+        "request": "http://localhost:9999/test",
+        "method":"GET",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "Reply":"Success"
+      },
+      "appProperties":false,
+      "expected": {"output": " /Published message to Topic : topic2 successfully /  /Published message to Queue : queuesession successfully / "}
+    }]
+  }
