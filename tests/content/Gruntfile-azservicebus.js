@@ -12,7 +12,7 @@ module.exports = function (grunt) {
                     keepAlive: false,
                     configFile: "./WI/config/protractorwiConf.js",
                     args: {
-                        specs: ['./connectors/azservicebus/content/tests/wi_AzureServiceBus.js']
+                        specs: ['./connectors/azservicebus/content/tests/wi_AzureSB_smoke.js']
                     }
                 }
             },
