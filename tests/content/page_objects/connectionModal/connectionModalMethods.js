@@ -11,8 +11,8 @@ var connectionModalMethods = function () {
     var EC = protractor.ExpectedConditions;
 
     this.clickAzureServiceBusConnection = function () {
-        browser.wait(EC.visibilityOf(connectionModalElements.AzureServiceBusConnection()), 10000);
-        browser.sleep(3000);
+        browser.wait(EC.visibilityOf(connectionModalElements.AzureServiceBusConnection()), 2000);
+
         utilities.clickElement(connectionModalElements.AzureServiceBusConnection(), "Click on AzureServiceBus connection");
 
     };
@@ -65,8 +65,8 @@ var connectionModalMethods = function () {
     };
 
     this.clickAzureServiceBusConnection = function () {
-        browser.wait(EC.visibilityOf(connectionModalElements.AzureServiceBusConnection()),10000);
-        browser.sleep(3000);
+        browser.wait(EC.visibilityOf(connectionModalElements.AzureServiceBusConnection()),2000);
+
         utilities.clickElement(connectionModalElements.AzureServiceBusConnection(),"Click on AzureServiceBus connection");
 
     };
@@ -124,7 +124,7 @@ var connectionModalMethods = function () {
         checkSymbolForConnection = checkSymbolForConnection || true;
         loggerFile.debug("Adding Azure Service Bus Connection");
         baseWI.connectionsHomePageMethods().clickConnectionsTab();
-        browser.sleep(40000);
+        browser.sleep(2000);
         //browser.wait(EC.or(EC.visibilityOf(baseWI.connectionsHomePageElements().addANewConnectionText()),
         //EC.visibilityOf(baseWI.connectionsHomePageElements().addConnectionsButton())), 50000);
         var that = this;
@@ -147,10 +147,10 @@ var connectionModalMethods = function () {
                     that.setAzureServiceBusNamespace(connectionDetails.azureservicebusNameSpace);
                     that.setAzureServiceBusKey(connectionDetails.azureservicebusKey);
                     that.clickAzureServiceBusConnectionButton();
-                    browser.sleep(5000);
+                    browser.sleep(2000);
                     browser.wait(EC.visibilityOf(baseWI.connectionsHomePageElements().createdConnection(connectionDetails.name)), timeOutDuration.Long);
                     if (checkSymbolForConnection) {
-                        browser.sleep(2000);
+                        browser.sleep(500);
                         expect(baseWI.connectionsHomePageMethods().checkSymbolForConnection(connectionDetails.name)).toBe(true);
                     }
                 });
