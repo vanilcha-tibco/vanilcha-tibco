@@ -143,6 +143,10 @@ describe("Flogo AzureServiceBus", function () {
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueTopic);
 
         baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueTopic);
+        baseWI.commonActivityMethods().clickCloseActivityConfiguration();
+
+
+
         var logMessage = 'string.concat(string.concat("QueueMessageOnPublish:",$activity[AzureServiceBusPublish].output.responseMessage),string.concat("TopicMessageOnPublish:",$activity[AzureServiceBusPublish1].output.responseMessage))';
 
         baseWI.addAndConfigureLogMessage("AzureServiceBusPublish1",logMessage, baseWI.commonElements().logLevelType.Info);
