@@ -129,6 +129,8 @@ describe("Flogo AzureServiceBus", function () {
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueQueue);
 
         baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueQueue);
+        baseWI.commonActivityMethods().clickCloseActivityConfiguration();
+
         baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity("AzureServiceBus Publish");
         //baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(baseWI.commonElements().activityType.AzureServiceBusPublish);
 
@@ -143,6 +145,7 @@ describe("Flogo AzureServiceBus", function () {
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueTopic);
 
         baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueTopic);
+        console.log("Before click CLose Activity COnfiguration");
         baseWI.commonActivityMethods().clickCloseActivityConfiguration();
 
 
