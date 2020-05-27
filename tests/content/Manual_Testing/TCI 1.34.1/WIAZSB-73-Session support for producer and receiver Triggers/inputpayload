@@ -1,0 +1,10 @@
+{
+ "input":{
+ "message": "testmessage1",
+ "queuename": "queuesession",
+ "topicname": "topic2",
+ "sessionidqueue":"session0001",
+ "sessionidtopic":"session0001"
+ },
+ "output":""
+}
