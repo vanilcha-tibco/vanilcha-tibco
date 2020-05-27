@@ -1,0 +1,917 @@
+{
+    "imports": [
+        "github.com/project-flogo/flow",
+        "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/activity/publish",
+        "git.tibco.com/git/product/ipaas/wi-contrib.git/contributions/General/activity/log",
+        "github.com/project-flogo/contrib/activity/actreturn",
+        "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/trigger/topicsubscriber",
+        "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/trigger/queuereceiver",
+        "git.tibco.com/git/product/ipaas/wi-contrib.git/contributions/General/trigger/rest",
+        "github.com/project-flogo/contrib/function/string",
+        "git.tibco.com/git/product/ipaas/wi-contrib.git/function/boolean",
+        "git.tibco.com/git/product/ipaas/wi-contrib.git/function/utility"
+    ],
+    "name": "AzServicebus",
+    "description": " ",
+    "version": "1.0.0",
+    "type": "flogo:app",
+    "appModel": "1.1.1",
+    "triggers": [
+        {
+            "ref": "#topicsubscriber",
+            "name": "azservicebus-topicsubscriber-trigger",
+            "description": "",
+            "settings": {
+                "azservicebusConnection": {
+                    "id": "0ed3c760-98ee-11ea-a123-79dae0ca8809",
+                    "type": "flogo:connector",
+                    "version": "1.1.0",
+                    "name": "azservicebus-connection",
+                    "hashTags": [],
+                    "inputMappings": {},
+                    "outputMappings": {},
+                    "iteratorMappings": {},
+                    "title": "Microsoft Azure ServiceBus Connector",
+                    "description": "Establish connection to your Azure ServiceBus account",
+                    "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection",
+                    "settings": [
+                        {
+                            "name": "name",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "name": "Connection Name",
+                                "visible": true
+                            },
+                            "value": "testsb110_2"
+                        },
+                        {
+                            "name": "description",
+                            "type": "string",
+                            "display": {
+                                "name": "Description",
+                                "visible": true
+                            },
+                            "value": ""
+                        },
+                        {
+                            "name": "resourceURI",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "name": "Service Bus Namespace",
+                                "description": "Provide the Namespace name without prefix .servicebus.windows.net",
+                                "visible": true,
+                                "appPropertySupport": true
+                            },
+                            "value": "=$property[\"AzureServiceBus.testsb110_2.Service_Bus_Namespace\"]"
+                        },
+                        {
+                            "name": "authorizationRuleName",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "name": "Authorization Rule Name",
+                                "visible": true,
+                                "appPropertySupport": true
+                            },
+                            "value": "=$property[\"AzureServiceBus.testsb110_2.Authorization_Rule_Name\"]"
+                        },
+                        {
+                            "name": "primarysecondaryKey",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "name": "Primary/Secondary Key",
+                                "visible": true,
+                                "type": "password",
+                                "encryptable": true,
+                                "appPropertySupport": true
+                            },
+                            "value": "=$property[\"AzureServiceBus.testsb110_2.Primary/Secondary_Key\"]"
+                        },
+                        {
+                            "name": "configProperties",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "visible": false
+                            },
+                            "value": ""
+                        },
+                        {
+                            "name": "DocsMetadata",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "visible": false
+                            },
+                            "value": "{\n      \"entityTypes\":[\"Queue\",\"Topic\"],\n      \"paths\": {\n        \"QueueReceive\":{\n          \"summary\": \"Queue Receiver\",\n          \"action\": \"QueueReceive\",\n          \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"ContentType\": { \"type\" : \"string\"},\n                        \"CorrelationId\": {\"type\" : \"string\"},\n                        \"Label\": {\"type\" : \"string\"},\n                        \"PartitionKey\": {\"type\" : \"string\"},\n                        \"ReplyTo\": {\"type\" : \"string\"},\n                        \"SessionId\": {\"type\" : \"string\"},\n                        \"TimeToLive\": { \"type\" : \"integer\"},\n                        \"To\": {\"type\" : \"string\"}\n                    }\n                  }\n                }\n            }\n        },\n        \"TopicSubscribe\":{\n          \"summary\": \"Topic Subscriber\",\n          \"action\": \"TopicSubscribe\",\n          \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"ContentType\": { \"type\" : \"string\"},\n                        \"CorrelationId\": {\"type\" : \"string\"},\n                        \"Label\": {\"type\" : \"string\"},\n                        \"PartitionKey\": {\"type\" : \"string\"},\n                        \"ReplyTo\": {\"type\" : \"string\"},\n                        \"SessionId\": {\"type\" : \"string\"},\n                        \"TimeToLive\": { \"type\" : \"integer\"},\n                        \"To\": {\"type\" : \"string\"}\n                    }\n                  }\n                }\n            }\n        },\n        \"Queue\": {\n          \"post\": {\n            \"summary\": \"Publish Message to Queue\",\n            \"action\": \"Queue\",\n            \"schema\": {\n              \"parameters\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"queueName\": { \"type\": \"string\" },\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\"type\": \"object\", \"properties\": {\n                      \"ContentType\": { \"type\" : \"string\"},\n                      \"CorrelationId\": {\"type\" : \"string\"},\n                      \"Label\": {\"type\" : \"string\"},\n                      \"PartitionKey\": {\"type\" : \"string\"},\n                      \"ReplyTo\": {\"type\" : \"string\"},\n                      \"SessionId\": {\"type\" : \"string\"},\n                      \"TimeToLive\": { \"type\" : \"integer\", \"minimum\": 0},\n                      \"To\": {\"type\" : \"string\"}\n                  }\n                }\n              },\n                \"required\": [\n                  \"queueName\",\n                  \"messageString\"\n                ]\n              },\n              \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"responseMessage\": {\"type\": \"string\" }\n                }\n              }\n            }\n          }\n        },\n        \"Topic\": {\n          \"post\": {\n            \"summary\": \"Publish Message to Topic\",\n            \"action\": \"Topic\",\n            \"schema\": {\n              \"parameters\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"topicName\": { \"type\": \"string\" },\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\"type\": \"object\", \"properties\": {\n                      \"ContentType\": { \"type\" : \"string\"},\n                      \"CorrelationId\": {\"type\" : \"string\"},\n                      \"Label\": {\"type\" : \"string\"},\n                      \"PartitionKey\": {\"type\" : \"string\"},\n                      \"ReplyTo\": {\"type\" : \"string\"},\n                      \"SessionId\": {\"type\" : \"string\"},\n                      \"TimeToLive\": { \"type\" : \"integer\", \"minimum\": 0},\n                      \"To\": {\"type\" : \"string\"}\n                  }  }\n              },\n                \"required\": [\n                  \"topicName\",\n                  \"messageString\"\n                ]\n              },\n              \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"responseMessage\": {\"type\": \"string\" }\n          }\n              }\n            }\n          }\n        }\n      }\n    }"
+                        }
+                    ],
+                    "outputs": [],
+                    "inputs": [],
+                    "handler": {
+                        "settings": []
+                    },
+                    "reply": [],
+                    "s3Prefix": "Tibco",
+                    "key": "Tibco/AzureServiceBus/connector/connection/connector.json",
+                    "display": {
+                        "description": "Establish connection to your Azure ServiceBus account",
+                        "category": "AzureServiceBus",
+                        "visible": true,
+                        "smallIcon": "icons/azure_service_bus.png",
+                        "largeIcon": "icons/azure_service_bus.png"
+                    },
+                    "actions": [
+                        {
+                            "name": "Login"
+                        }
+                    ],
+                    "feature": {},
+                    "loopType": "none",
+                    "loopSettings": [],
+                    "retrySettings": [],
+                    "propertyMap": {},
+                    "keyfield": "name",
+                    "iteratorAccumulate": false,
+                    "isValid": true,
+                    "lastUpdatedTime": 1589796019734,
+                    "user": "hjrzimhuqfwmulexqkczxryg4k36pshs",
+                    "connectorName": "testsb110_2",
+                    "connectorDescription": " "
+                }
+            },
+            "id": "AzureServiceBusTopicSubscriber",
+            "handlers": [
+                {
+                    "description": "",
+                    "settings": {
+                        "topic": "newtopic",
+                        "subscriptionName": "NewSub",
+                        "sessionId": "bbb",
+                        "valueType": "String"
+                    },
+                    "action": {
+                        "ref": "github.com/project-flogo/flow",
+                        "settings": {
+                            "flowURI": "res://flow:topicsubs"
+                        },
+                        "input": {
+                            "output": "=$.output"
+                        }
+                    },
+                    "schemas": {
+                        "output": {
+                            "output": {
+                                "type": "json",
+                                "value": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\"},\"To\":{\"type\":\"string\"}}}}}",
+                                "fe_metadata": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\"},\"To\":{\"type\":\"string\"}}}}}"
+                            }
+                        }
+                    },
+                    "name": "topicsubs"
+                }
+            ]
+        },
+        {
+            "ref": "#queuereceiver",
+            "name": "azservicebus-queuereceiver-trigger",
+            "description": "",
+            "settings": {
+                "azservicebusConnection": {
+                    "id": "0ed3c760-98ee-11ea-a123-79dae0ca8809",
+                    "type": "flogo:connector",
+                    "version": "1.1.0",
+                    "name": "azservicebus-connection",
+                    "hashTags": [],
+                    "inputMappings": {},
+                    "outputMappings": {},
+                    "iteratorMappings": {},
+                    "title": "Microsoft Azure ServiceBus Connector",
+                    "description": "Establish connection to your Azure ServiceBus account",
+                    "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection",
+                    "settings": [
+                        {
+                            "name": "name",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "name": "Connection Name",
+                                "visible": true
+                            },
+                            "value": "testsb110_2"
+                        },
+                        {
+                            "name": "description",
+                            "type": "string",
+                            "display": {
+                                "name": "Description",
+                                "visible": true
+                            },
+                            "value": ""
+                        },
+                        {
+                            "name": "resourceURI",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "name": "Service Bus Namespace",
+                                "description": "Provide the Namespace name without prefix .servicebus.windows.net",
+                                "visible": true,
+                                "appPropertySupport": true
+                            },
+                            "value": "=$property[\"AzureServiceBus.testsb110_2.Service_Bus_Namespace\"]"
+                        },
+                        {
+                            "name": "authorizationRuleName",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "name": "Authorization Rule Name",
+                                "visible": true,
+                                "appPropertySupport": true
+                            },
+                            "value": "=$property[\"AzureServiceBus.testsb110_2.Authorization_Rule_Name\"]"
+                        },
+                        {
+                            "name": "primarysecondaryKey",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "name": "Primary/Secondary Key",
+                                "visible": true,
+                                "type": "password",
+                                "encryptable": true,
+                                "appPropertySupport": true
+                            },
+                            "value": "=$property[\"AzureServiceBus.testsb110_2.Primary/Secondary_Key\"]"
+                        },
+                        {
+                            "name": "configProperties",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "visible": false
+                            },
+                            "value": ""
+                        },
+                        {
+                            "name": "DocsMetadata",
+                            "type": "string",
+                            "required": true,
+                            "display": {
+                                "visible": false
+                            },
+                            "value": "{\n      \"entityTypes\":[\"Queue\",\"Topic\"],\n      \"paths\": {\n        \"QueueReceive\":{\n          \"summary\": \"Queue Receiver\",\n          \"action\": \"QueueReceive\",\n          \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"ContentType\": { \"type\" : \"string\"},\n                        \"CorrelationId\": {\"type\" : \"string\"},\n                        \"Label\": {\"type\" : \"string\"},\n                        \"PartitionKey\": {\"type\" : \"string\"},\n                        \"ReplyTo\": {\"type\" : \"string\"},\n                        \"SessionId\": {\"type\" : \"string\"},\n                        \"TimeToLive\": { \"type\" : \"integer\"},\n                        \"To\": {\"type\" : \"string\"}\n                    }\n                  }\n                }\n            }\n        },\n        \"TopicSubscribe\":{\n          \"summary\": \"Topic Subscriber\",\n          \"action\": \"TopicSubscribe\",\n          \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"ContentType\": { \"type\" : \"string\"},\n                        \"CorrelationId\": {\"type\" : \"string\"},\n                        \"Label\": {\"type\" : \"string\"},\n                        \"PartitionKey\": {\"type\" : \"string\"},\n                        \"ReplyTo\": {\"type\" : \"string\"},\n                        \"SessionId\": {\"type\" : \"string\"},\n                        \"TimeToLive\": { \"type\" : \"integer\"},\n                        \"To\": {\"type\" : \"string\"}\n                    }\n                  }\n                }\n            }\n        },\n        \"Queue\": {\n          \"post\": {\n            \"summary\": \"Publish Message to Queue\",\n            \"action\": \"Queue\",\n            \"schema\": {\n              \"parameters\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"queueName\": { \"type\": \"string\" },\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\"type\": \"object\", \"properties\": {\n                      \"ContentType\": { \"type\" : \"string\"},\n                      \"CorrelationId\": {\"type\" : \"string\"},\n                      \"Label\": {\"type\" : \"string\"},\n                      \"PartitionKey\": {\"type\" : \"string\"},\n                      \"ReplyTo\": {\"type\" : \"string\"},\n                      \"SessionId\": {\"type\" : \"string\"},\n                      \"TimeToLive\": { \"type\" : \"integer\", \"minimum\": 0},\n                      \"To\": {\"type\" : \"string\"}\n                  }\n                }\n              },\n                \"required\": [\n                  \"queueName\",\n                  \"messageString\"\n                ]\n              },\n              \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"responseMessage\": {\"type\": \"string\" }\n                }\n              }\n            }\n          }\n        },\n        \"Topic\": {\n          \"post\": {\n            \"summary\": \"Publish Message to Topic\",\n            \"action\": \"Topic\",\n            \"schema\": {\n              \"parameters\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"topicName\": { \"type\": \"string\" },\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\"type\": \"object\", \"properties\": {\n                      \"ContentType\": { \"type\" : \"string\"},\n                      \"CorrelationId\": {\"type\" : \"string\"},\n                      \"Label\": {\"type\" : \"string\"},\n                      \"PartitionKey\": {\"type\" : \"string\"},\n                      \"ReplyTo\": {\"type\" : \"string\"},\n                      \"SessionId\": {\"type\" : \"string\"},\n                      \"TimeToLive\": { \"type\" : \"integer\", \"minimum\": 0},\n                      \"To\": {\"type\" : \"string\"}\n                  }  }\n              },\n                \"required\": [\n                  \"topicName\",\n                  \"messageString\"\n                ]\n              },\n              \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"responseMessage\": {\"type\": \"string\" }\n          }\n              }\n            }\n          }\n        }\n      }\n    }"
+                        }
+                    ],
+                    "outputs": [],
+                    "inputs": [],
+                    "handler": {
+                        "settings": []
+                    },
+                    "reply": [],
+                    "s3Prefix": "Tibco",
+                    "key": "Tibco/AzureServiceBus/connector/connection/connector.json",
+                    "display": {
+                        "description": "Establish connection to your Azure ServiceBus account",
+                        "category": "AzureServiceBus",
+                        "visible": true,
+                        "smallIcon": "icons/azure_service_bus.png",
+                        "largeIcon": "icons/azure_service_bus.png"
+                    },
+                    "actions": [
+                        {
+                            "name": "Login"
+                        }
+                    ],
+                    "feature": {},
+                    "loopType": "none",
+                    "loopSettings": [],
+                    "retrySettings": [],
+                    "propertyMap": {},
+                    "keyfield": "name",
+                    "iteratorAccumulate": false,
+                    "isValid": true,
+                    "lastUpdatedTime": 1589796019734,
+                    "user": "hjrzimhuqfwmulexqkczxryg4k36pshs",
+                    "connectorName": "testsb110_2",
+                    "connectorDescription": " "
+                }
+            },
+            "id": "AzureServiceBusQueueReceiver",
+            "handlers": [
+                {
+                    "description": "",
+                    "settings": {
+                        "queue": "newqueue",
+                        "sessionId": "aaa",
+                        "receiveMode": "PeekLock",
+                        "valueType": "String"
+                    },
+                    "action": {
+                        "ref": "github.com/project-flogo/flow",
+                        "settings": {
+                            "flowURI": "res://flow:queuerec"
+                        },
+                        "input": {
+                            "output": "=$.output"
+                        }
+                    },
+                    "schemas": {
+                        "output": {
+                            "output": {
+                                "type": "json",
+                                "value": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\"},\"To\":{\"type\":\"string\"}}}}}",
+                                "fe_metadata": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\"},\"To\":{\"type\":\"string\"}}}}}"
+                            }
+                        }
+                    },
+                    "name": "queuerec"
+                }
+            ]
+        },
+        {
+            "ref": "#rest",
+            "name": "tibco-wi-rest",
+            "description": "Simple REST Trigger",
+            "settings": {
+                "port": 9999,
+                "APISpecUpdate": false,
+                "swagger": "",
+                "secureConnection": false,
+                "serverKey": "",
+                "caCertificate": ""
+            },
+            "id": "ReceiveHTTPMessage",
+            "handlers": [
+                {
+                    "description": "",
+                    "settings": {
+                        "Method": "GET",
+                        "Path": "/az/output",
+                        "OutputValidation": false
+                    },
+                    "action": {
+                        "ref": "github.com/project-flogo/flow",
+                        "settings": {
+                            "flowURI": "res://flow:publish"
+                        },
+                        "output": {
+                            "data": {
+                                "mapping": {
+                                    "AZOutput": "=$.AZOutput"
+                                }
+                            }
+                        }
+                    },
+                    "reply": {
+                        "code": 200,
+                        "configureResponseCodes": false,
+                        "message": {}
+                    },
+                    "schemas": {
+                        "reply": {
+                            "data": {
+                                "type": "json",
+                                "value": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"properties\":{\"AZOutput\":{\"type\":\"string\"}}}",
+                                "fe_metadata": "{\"AZOutput\":\"\"}"
+                            },
+                            "responseBody": {
+                                "type": "json",
+                                "value": "{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"any\"},\"headers\":{\"type\":\"object\"}}}",
+                                "fe_metadata": "{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"any\"},\"headers\":{\"type\":\"object\"}}}"
+                            }
+                        },
+                        "output": {
+                            "headers": {
+                                "type": "json",
+                                "value": "{\"type\":\"object\",\"properties\":{\"Accept\":{\"type\":\"string\",\"visible\":false},\"Accept-Charset\":{\"type\":\"string\",\"visible\":false},\"Accept-Encoding\":{\"type\":\"string\",\"visible\":false},\"Content-Type\":{\"type\":\"string\",\"visible\":false},\"Content-Length\":{\"type\":\"string\",\"visible\":false},\"Connection\":{\"type\":\"string\",\"visible\":false},\"Cookie\":{\"type\":\"string\",\"visible\":false},\"Pragma\":{\"type\":\"string\",\"visible\":false}},\"required\":[]}",
+                                "fe_metadata": "[{\"parameterName\":\"Accept\",\"type\":\"string\",\"repeating\":\"false\",\"required\":\"false\",\"visible\":false},{\"parameterName\":\"Accept-Charset\",\"type\":\"string\",\"repeating\":\"false\",\"required\":\"false\",\"visible\":false},{\"parameterName\":\"Accept-Encoding\",\"type\":\"string\",\"repeating\":\"false\",\"required\":\"false\",\"visible\":false},{\"parameterName\":\"Content-Type\",\"type\":\"string\",\"repeating\":\"false\",\"required\":\"false\",\"visible\":false},{\"parameterName\":\"Content-Length\",\"type\":\"string\",\"repeating\":\"false\",\"required\":\"false\",\"visible\":false},{\"parameterName\":\"Connection\",\"type\":\"string\",\"repeating\":\"false\",\"required\":\"false\",\"visible\":false},{\"parameterName\":\"Cookie\",\"type\":\"string\",\"repeating\":\"false\",\"required\":\"false\",\"visible\":false},{\"parameterName\":\"Pragma\",\"type\":\"string\",\"repeating\":\"false\",\"required\":\"false\",\"visible\":false}]"
+                            }
+                        }
+                    },
+                    "name": "publish"
+                }
+            ]
+        }
+    ],
+    "resources": [
+        {
+            "id": "flow:publish",
+            "data": {
+                "name": "publish",
+                "description": "",
+                "links": [
+                    {
+                        "id": 1,
+                        "from": "AzureServiceBusPublish",
+                        "to": "AzureServiceBusPublish1",
+                        "type": "default"
+                    },
+                    {
+                        "id": 2,
+                        "from": "AzureServiceBusPublish1",
+                        "to": "LogMessagePub",
+                        "type": "default"
+                    },
+                    {
+                        "id": 3,
+                        "from": "LogMessagePub",
+                        "to": "Return",
+                        "type": "default"
+                    }
+                ],
+                "tasks": [
+                    {
+                        "id": "AzureServiceBusPublish",
+                        "name": "AzureServiceBusPublish",
+                        "description": "AzureServiceBus Publish Activity",
+                        "activity": {
+                            "ref": "#publish",
+                            "input": {
+                                "Connection": {
+                                    "id": "0ed3c760-98ee-11ea-a123-79dae0ca8809",
+                                    "type": "flogo:connector",
+                                    "version": "1.1.0",
+                                    "name": "azservicebus-connection",
+                                    "hashTags": [],
+                                    "inputMappings": {},
+                                    "outputMappings": {},
+                                    "iteratorMappings": {},
+                                    "title": "Microsoft Azure ServiceBus Connector",
+                                    "description": "Establish connection to your Azure ServiceBus account",
+                                    "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection",
+                                    "settings": [
+                                        {
+                                            "name": "name",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "name": "Connection Name",
+                                                "visible": true
+                                            },
+                                            "value": "testsb110_2"
+                                        },
+                                        {
+                                            "name": "description",
+                                            "type": "string",
+                                            "display": {
+                                                "name": "Description",
+                                                "visible": true
+                                            },
+                                            "value": ""
+                                        },
+                                        {
+                                            "name": "resourceURI",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "name": "Service Bus Namespace",
+                                                "description": "Provide the Namespace name without prefix .servicebus.windows.net",
+                                                "visible": true,
+                                                "appPropertySupport": true
+                                            },
+                                            "value": "=$property[\"AzureServiceBus.testsb110_2.Service_Bus_Namespace\"]"
+                                        },
+                                        {
+                                            "name": "authorizationRuleName",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "name": "Authorization Rule Name",
+                                                "visible": true,
+                                                "appPropertySupport": true
+                                            },
+                                            "value": "=$property[\"AzureServiceBus.testsb110_2.Authorization_Rule_Name\"]"
+                                        },
+                                        {
+                                            "name": "primarysecondaryKey",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "name": "Primary/Secondary Key",
+                                                "visible": true,
+                                                "type": "password",
+                                                "encryptable": true,
+                                                "appPropertySupport": true
+                                            },
+                                            "value": "=$property[\"AzureServiceBus.testsb110_2.Primary/Secondary_Key\"]"
+                                        },
+                                        {
+                                            "name": "configProperties",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "visible": false
+                                            },
+                                            "value": ""
+                                        },
+                                        {
+                                            "name": "DocsMetadata",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "visible": false
+                                            },
+                                            "value": "{\n      \"entityTypes\":[\"Queue\",\"Topic\"],\n      \"paths\": {\n        \"QueueReceive\":{\n          \"summary\": \"Queue Receiver\",\n          \"action\": \"QueueReceive\",\n          \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"ContentType\": { \"type\" : \"string\"},\n                        \"CorrelationId\": {\"type\" : \"string\"},\n                        \"Label\": {\"type\" : \"string\"},\n                        \"PartitionKey\": {\"type\" : \"string\"},\n                        \"ReplyTo\": {\"type\" : \"string\"},\n                        \"SessionId\": {\"type\" : \"string\"},\n                        \"TimeToLive\": { \"type\" : \"integer\"},\n                        \"To\": {\"type\" : \"string\"}\n                    }\n                  }\n                }\n            }\n        },\n        \"TopicSubscribe\":{\n          \"summary\": \"Topic Subscriber\",\n          \"action\": \"TopicSubscribe\",\n          \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"ContentType\": { \"type\" : \"string\"},\n                        \"CorrelationId\": {\"type\" : \"string\"},\n                        \"Label\": {\"type\" : \"string\"},\n                        \"PartitionKey\": {\"type\" : \"string\"},\n                        \"ReplyTo\": {\"type\" : \"string\"},\n                        \"SessionId\": {\"type\" : \"string\"},\n                        \"TimeToLive\": { \"type\" : \"integer\"},\n                        \"To\": {\"type\" : \"string\"}\n                    }\n                  }\n                }\n            }\n        },\n        \"Queue\": {\n          \"post\": {\n            \"summary\": \"Publish Message to Queue\",\n            \"action\": \"Queue\",\n            \"schema\": {\n              \"parameters\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"queueName\": { \"type\": \"string\" },\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\"type\": \"object\", \"properties\": {\n                      \"ContentType\": { \"type\" : \"string\"},\n                      \"CorrelationId\": {\"type\" : \"string\"},\n                      \"Label\": {\"type\" : \"string\"},\n                      \"PartitionKey\": {\"type\" : \"string\"},\n                      \"ReplyTo\": {\"type\" : \"string\"},\n                      \"SessionId\": {\"type\" : \"string\"},\n                      \"TimeToLive\": { \"type\" : \"integer\", \"minimum\": 0},\n                      \"To\": {\"type\" : \"string\"}\n                  }\n                }\n              },\n                \"required\": [\n                  \"queueName\",\n                  \"messageString\"\n                ]\n              },\n              \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"responseMessage\": {\"type\": \"string\" }\n                }\n              }\n            }\n          }\n        },\n        \"Topic\": {\n          \"post\": {\n            \"summary\": \"Publish Message to Topic\",\n            \"action\": \"Topic\",\n            \"schema\": {\n              \"parameters\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"topicName\": { \"type\": \"string\" },\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\"type\": \"object\", \"properties\": {\n                      \"ContentType\": { \"type\" : \"string\"},\n                      \"CorrelationId\": {\"type\" : \"string\"},\n                      \"Label\": {\"type\" : \"string\"},\n                      \"PartitionKey\": {\"type\" : \"string\"},\n                      \"ReplyTo\": {\"type\" : \"string\"},\n                      \"SessionId\": {\"type\" : \"string\"},\n                      \"TimeToLive\": { \"type\" : \"integer\", \"minimum\": 0},\n                      \"To\": {\"type\" : \"string\"}\n                  }  }\n              },\n                \"required\": [\n                  \"topicName\",\n                  \"messageString\"\n                ]\n              },\n              \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"responseMessage\": {\"type\": \"string\" }\n          }\n              }\n            }\n          }\n        }\n      }\n    }"
+                                        }
+                                    ],
+                                    "outputs": [],
+                                    "inputs": [],
+                                    "handler": {
+                                        "settings": []
+                                    },
+                                    "reply": [],
+                                    "s3Prefix": "Tibco",
+                                    "key": "Tibco/AzureServiceBus/connector/connection/connector.json",
+                                    "display": {
+                                        "description": "Establish connection to your Azure ServiceBus account",
+                                        "category": "AzureServiceBus",
+                                        "visible": true,
+                                        "smallIcon": "icons/azure_service_bus.png",
+                                        "largeIcon": "icons/azure_service_bus.png"
+                                    },
+                                    "actions": [
+                                        {
+                                            "name": "Login"
+                                        }
+                                    ],
+                                    "feature": {},
+                                    "loopType": "none",
+                                    "loopSettings": [],
+                                    "retrySettings": [],
+                                    "propertyMap": {},
+                                    "keyfield": "name",
+                                    "iteratorAccumulate": false,
+                                    "isValid": true,
+                                    "lastUpdatedTime": 1589796019734,
+                                    "user": "hjrzimhuqfwmulexqkczxryg4k36pshs",
+                                    "connectorName": "testsb110_2",
+                                    "connectorDescription": " "
+                                },
+                                "entityType": "Queue",
+                                "entityName": "",
+                                "input": {
+                                    "mapping": {
+                                        "parameters": {
+                                            "queueName": "newqueue",
+                                            "messageString": "queuemsg",
+                                            "brokerProperties": {
+                                                "SessionId": "aaa"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "schemas": {
+                                "input": {
+                                    "input": {
+                                        "type": "json",
+                                        "value": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"parameters\":{\"$id\":\"http://example.com/example.json\",\"type\":\"object\",\"definitions\":{},\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"additionalProperties\":false,\"properties\":{\"queueName\":{\"type\":\"string\"},\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\",\"minimum\":0},\"To\":{\"type\":\"string\"}}}},\"required\":[\"queueName\",\"messageString\"]}}}",
+                                        "fe_metadata": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"parameters\":{\"$id\":\"http://example.com/example.json\",\"type\":\"object\",\"definitions\":{},\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"additionalProperties\":false,\"properties\":{\"queueName\":{\"type\":\"string\"},\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\",\"minimum\":0},\"To\":{\"type\":\"string\"}}}},\"required\":[\"queueName\",\"messageString\"]}}}"
+                                    }
+                                },
+                                "output": {
+                                    "output": {
+                                        "type": "json",
+                                        "value": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"responseMessage\":{\"type\":\"string\"}}}",
+                                        "fe_metadata": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"responseMessage\":{\"type\":\"string\"}}}"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "id": "AzureServiceBusPublish1",
+                        "name": "AzureServiceBusPublish1",
+                        "description": "AzureServiceBus Publish Activity",
+                        "activity": {
+                            "ref": "#publish",
+                            "input": {
+                                "Connection": {
+                                    "id": "0ed3c760-98ee-11ea-a123-79dae0ca8809",
+                                    "type": "flogo:connector",
+                                    "version": "1.1.0",
+                                    "name": "azservicebus-connection",
+                                    "hashTags": [],
+                                    "inputMappings": {},
+                                    "outputMappings": {},
+                                    "iteratorMappings": {},
+                                    "title": "Microsoft Azure ServiceBus Connector",
+                                    "description": "Establish connection to your Azure ServiceBus account",
+                                    "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection",
+                                    "settings": [
+                                        {
+                                            "name": "name",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "name": "Connection Name",
+                                                "visible": true
+                                            },
+                                            "value": "testsb110_2"
+                                        },
+                                        {
+                                            "name": "description",
+                                            "type": "string",
+                                            "display": {
+                                                "name": "Description",
+                                                "visible": true
+                                            },
+                                            "value": ""
+                                        },
+                                        {
+                                            "name": "resourceURI",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "name": "Service Bus Namespace",
+                                                "description": "Provide the Namespace name without prefix .servicebus.windows.net",
+                                                "visible": true,
+                                                "appPropertySupport": true
+                                            },
+                                            "value": "=$property[\"AzureServiceBus.testsb110_2.Service_Bus_Namespace\"]"
+                                        },
+                                        {
+                                            "name": "authorizationRuleName",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "name": "Authorization Rule Name",
+                                                "visible": true,
+                                                "appPropertySupport": true
+                                            },
+                                            "value": "=$property[\"AzureServiceBus.testsb110_2.Authorization_Rule_Name\"]"
+                                        },
+                                        {
+                                            "name": "primarysecondaryKey",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "name": "Primary/Secondary Key",
+                                                "visible": true,
+                                                "type": "password",
+                                                "encryptable": true,
+                                                "appPropertySupport": true
+                                            },
+                                            "value": "=$property[\"AzureServiceBus.testsb110_2.Primary/Secondary_Key\"]"
+                                        },
+                                        {
+                                            "name": "configProperties",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "visible": false
+                                            },
+                                            "value": ""
+                                        },
+                                        {
+                                            "name": "DocsMetadata",
+                                            "type": "string",
+                                            "required": true,
+                                            "display": {
+                                                "visible": false
+                                            },
+                                            "value": "{\n      \"entityTypes\":[\"Queue\",\"Topic\"],\n      \"paths\": {\n        \"QueueReceive\":{\n          \"summary\": \"Queue Receiver\",\n          \"action\": \"QueueReceive\",\n          \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"ContentType\": { \"type\" : \"string\"},\n                        \"CorrelationId\": {\"type\" : \"string\"},\n                        \"Label\": {\"type\" : \"string\"},\n                        \"PartitionKey\": {\"type\" : \"string\"},\n                        \"ReplyTo\": {\"type\" : \"string\"},\n                        \"SessionId\": {\"type\" : \"string\"},\n                        \"TimeToLive\": { \"type\" : \"integer\"},\n                        \"To\": {\"type\" : \"string\"}\n                    }\n                  }\n                }\n            }\n        },\n        \"TopicSubscribe\":{\n          \"summary\": \"Topic Subscriber\",\n          \"action\": \"TopicSubscribe\",\n          \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"ContentType\": { \"type\" : \"string\"},\n                        \"CorrelationId\": {\"type\" : \"string\"},\n                        \"Label\": {\"type\" : \"string\"},\n                        \"PartitionKey\": {\"type\" : \"string\"},\n                        \"ReplyTo\": {\"type\" : \"string\"},\n                        \"SessionId\": {\"type\" : \"string\"},\n                        \"TimeToLive\": { \"type\" : \"integer\"},\n                        \"To\": {\"type\" : \"string\"}\n                    }\n                  }\n                }\n            }\n        },\n        \"Queue\": {\n          \"post\": {\n            \"summary\": \"Publish Message to Queue\",\n            \"action\": \"Queue\",\n            \"schema\": {\n              \"parameters\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"queueName\": { \"type\": \"string\" },\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\"type\": \"object\", \"properties\": {\n                      \"ContentType\": { \"type\" : \"string\"},\n                      \"CorrelationId\": {\"type\" : \"string\"},\n                      \"Label\": {\"type\" : \"string\"},\n                      \"PartitionKey\": {\"type\" : \"string\"},\n                      \"ReplyTo\": {\"type\" : \"string\"},\n                      \"SessionId\": {\"type\" : \"string\"},\n                      \"TimeToLive\": { \"type\" : \"integer\", \"minimum\": 0},\n                      \"To\": {\"type\" : \"string\"}\n                  }\n                }\n              },\n                \"required\": [\n                  \"queueName\",\n                  \"messageString\"\n                ]\n              },\n              \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"responseMessage\": {\"type\": \"string\" }\n                }\n              }\n            }\n          }\n        },\n        \"Topic\": {\n          \"post\": {\n            \"summary\": \"Publish Message to Topic\",\n            \"action\": \"Topic\",\n            \"schema\": {\n              \"parameters\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"topicName\": { \"type\": \"string\" },\n                  \"messageString\": {\"type\": \"string\"},\n                  \"brokerProperties\": {\"type\": \"object\", \"properties\": {\n                      \"ContentType\": { \"type\" : \"string\"},\n                      \"CorrelationId\": {\"type\" : \"string\"},\n                      \"Label\": {\"type\" : \"string\"},\n                      \"PartitionKey\": {\"type\" : \"string\"},\n                      \"ReplyTo\": {\"type\" : \"string\"},\n                      \"SessionId\": {\"type\" : \"string\"},\n                      \"TimeToLive\": { \"type\" : \"integer\", \"minimum\": 0},\n                      \"To\": {\"type\" : \"string\"}\n                  }  }\n              },\n                \"required\": [\n                  \"topicName\",\n                  \"messageString\"\n                ]\n              },\n              \"output\": {\n                \"$id\": \"http://example.com/example.json\",\n                \"type\": \"object\",\n                \"definitions\": {},\n                \"$schema\": \"http://json-schema.org/draft-07/schema#\",\n                \"additionalProperties\": false,\n                \"properties\": {\n                  \"responseMessage\": {\"type\": \"string\" }\n          }\n              }\n            }\n          }\n        }\n      }\n    }"
+                                        }
+                                    ],
+                                    "outputs": [],
+                                    "inputs": [],
+                                    "handler": {
+                                        "settings": []
+                                    },
+                                    "reply": [],
+                                    "s3Prefix": "Tibco",
+                                    "key": "Tibco/AzureServiceBus/connector/connection/connector.json",
+                                    "display": {
+                                        "description": "Establish connection to your Azure ServiceBus account",
+                                        "category": "AzureServiceBus",
+                                        "visible": true,
+                                        "smallIcon": "icons/azure_service_bus.png",
+                                        "largeIcon": "icons/azure_service_bus.png"
+                                    },
+                                    "actions": [
+                                        {
+                                            "name": "Login"
+                                        }
+                                    ],
+                                    "feature": {},
+                                    "loopType": "none",
+                                    "loopSettings": [],
+                                    "retrySettings": [],
+                                    "propertyMap": {},
+                                    "keyfield": "name",
+                                    "iteratorAccumulate": false,
+                                    "isValid": true,
+                                    "lastUpdatedTime": 1589796019734,
+                                    "user": "hjrzimhuqfwmulexqkczxryg4k36pshs",
+                                    "connectorName": "testsb110_2",
+                                    "connectorDescription": " "
+                                },
+                                "entityType": "Topic",
+                                "entityName": "",
+                                "input": {
+                                    "mapping": {
+                                        "parameters": {
+                                            "topicName": "newtopic",
+                                            "messageString": "topicmsg",
+                                            "brokerProperties": {
+                                                "SessionId": "bbb"
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "schemas": {
+                                "input": {
+                                    "input": {
+                                        "type": "json",
+                                        "value": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"parameters\":{\"$id\":\"http://example.com/example.json\",\"type\":\"object\",\"definitions\":{},\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"additionalProperties\":false,\"properties\":{\"topicName\":{\"type\":\"string\"},\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\",\"minimum\":0},\"To\":{\"type\":\"string\"}}}},\"required\":[\"topicName\",\"messageString\"]}}}",
+                                        "fe_metadata": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"parameters\":{\"$id\":\"http://example.com/example.json\",\"type\":\"object\",\"definitions\":{},\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"additionalProperties\":false,\"properties\":{\"topicName\":{\"type\":\"string\"},\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\",\"minimum\":0},\"To\":{\"type\":\"string\"}}}},\"required\":[\"topicName\",\"messageString\"]}}}"
+                                    }
+                                },
+                                "output": {
+                                    "output": {
+                                        "type": "json",
+                                        "value": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"responseMessage\":{\"type\":\"string\"}}}",
+                                        "fe_metadata": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"responseMessage\":{\"type\":\"string\"}}}"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "id": "LogMessagePub",
+                        "name": "LogMessagePub",
+                        "description": "Simple Log Message Activity",
+                        "activity": {
+                            "ref": "#log",
+                            "input": {
+                                "Log Level": "INFO",
+                                "flowInfo": false,
+                                "message": "=string.tostring($activity[AzureServiceBusPublish].output)"
+                            }
+                        }
+                    },
+                    {
+                        "id": "Return",
+                        "name": "Return",
+                        "description": "",
+                        "activity": {
+                            "ref": "#actreturn",
+                            "settings": {
+                                "mappings": {
+                                    "AZOutput": "=string.tostring($activity[AzureServiceBusPublish1].output)"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "metadata": {
+                    "input": [],
+                    "output": [
+                        {
+                            "name": "AZOutput",
+                            "type": "string"
+                        }
+                    ],
+                    "fe_metadata": {
+                        "output": "{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"properties\":{\"AZOutput\":{\"type\":\"string\"}}}"
+                    }
+                },
+                "explicitReply": true
+            }
+        },
+        {
+            "id": "flow:topicsubs",
+            "data": {
+                "name": "topicsubs",
+                "description": "",
+                "links": [],
+                "tasks": [
+                    {
+                        "id": "LogMessageSub",
+                        "name": "LogMessageSub",
+                        "description": "Simple Log Message Activity",
+                        "activity": {
+                            "ref": "#log",
+                            "input": {
+                                "Log Level": "INFO",
+                                "flowInfo": false,
+                                "message": "=utility.renderJSON($flow.output, boolean.false())"
+                            }
+                        }
+                    }
+                ],
+                "metadata": {
+                    "input": [
+                        {
+                            "name": "output",
+                            "type": "object",
+                            "schema": {
+                                "type": "json",
+                                "value": "{\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\"},\"To\":{\"type\":\"string\"}}}}"
+                            }
+                        }
+                    ],
+                    "output": [],
+                    "fe_metadata": {
+                        "input": "{\"type\":\"object\",\"title\":\"AzureServiceBusTopicSubscriber\",\"properties\":{\"output\":{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\"},\"To\":{\"type\":\"string\"}}}}}}}"
+                    }
+                }
+            }
+        },
+        {
+            "id": "flow:queuerec",
+            "data": {
+                "name": "queuerec",
+                "description": "",
+                "links": [],
+                "tasks": [
+                    {
+                        "id": "LogMessageQueue",
+                        "name": "LogMessageQueue",
+                        "description": "Simple Log Message Activity",
+                        "activity": {
+                            "ref": "#log",
+                            "input": {
+                                "Log Level": "INFO",
+                                "flowInfo": false,
+                                "message": "=utility.renderJSON($flow.output, boolean.false())"
+                            }
+                        }
+                    }
+                ],
+                "metadata": {
+                    "input": [
+                        {
+                            "name": "output",
+                            "type": "object",
+                            "schema": {
+                                "type": "json",
+                                "value": "{\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\"},\"To\":{\"type\":\"string\"}}}}"
+                            }
+                        }
+                    ],
+                    "output": [],
+                    "fe_metadata": {
+                        "input": "{\"type\":\"object\",\"title\":\"AzureServiceBusQueueReceiver\",\"properties\":{\"output\":{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"definitions\":{},\"properties\":{\"messageString\":{\"type\":\"string\"},\"brokerProperties\":{\"type\":\"object\",\"properties\":{\"ContentType\":{\"type\":\"string\"},\"CorrelationId\":{\"type\":\"string\"},\"Label\":{\"type\":\"string\"},\"PartitionKey\":{\"type\":\"string\"},\"ReplyTo\":{\"type\":\"string\"},\"SessionId\":{\"type\":\"string\"},\"TimeToLive\":{\"type\":\"integer\"},\"To\":{\"type\":\"string\"}}}}}}}"
+                    }
+                }
+            }
+        }
+    ],
+    "properties": [
+        {
+            "name": "AzureServiceBus.testsb110.Primary/Secondary_Key",
+            "type": "string",
+            "value": "SECRET:EmiyYfwZsZ2NIymqKnlwZQ=="
+        },
+        {
+            "name": "topicname",
+            "type": "string",
+            "value": "topic2"
+        },
+        {
+            "name": "queuename",
+            "type": "string",
+            "value": "queuesession"
+        },
+        {
+            "name": "sessionidqueue",
+            "type": "string",
+            "value": "session02"
+        },
+        {
+            "name": "sessionidtopic",
+            "type": "string",
+            "value": "session02"
+        },
+        {
+            "name": "sub",
+            "type": "string",
+            "value": "sub2"
+        },
+        {
+            "name": "AzureServiceBus.testsb110_2.Service_Bus_Namespace",
+            "type": "string",
+            "value": "tibcojetblueexp"
+        },
+        {
+            "name": "AzureServiceBus.testsb110_2.Authorization_Rule_Name",
+            "type": "string",
+            "value": "golangtest"
+        },
+        {
+            "name": "AzureServiceBus.testsb110_2.Primary/Secondary_Key",
+            "type": "string",
+            "value": "SECRET:g+pF40FNex2EyjX/iYMEfIUuLNkhnfLPCrARA1RXMlcNked07JHDNGE5qOvoDqT9c9XORyYRAyAP649G"
+        }
+    ],
+    "connections": {},
+    "contrib": "W3sicmVmIjoiZ2l0LnRpYmNvLmNvbS9naXQvcHJvZHVjdC9pcGFhcy93aS1henNlcnZpY2VidXMuZ2l0L3NyYy9hcHAvQXp1cmVTZXJ2aWNlQnVzIiwiczNsb2NhdGlvbiI6IlRpYmNvL0F6dXJlU2VydmljZUJ1cyJ9LHsicmVmIjoiZ2l0LnRpYmNvLmNvbS9naXQvcHJvZHVjdC9pcGFhcy93aS1jb250cmliLmdpdC9jb250cmlidXRpb25zL0dlbmVyYWwiLCJzM2xvY2F0aW9uIjoiVGliY28vR2VuZXJhbCJ9XQ==",
+    "fe_metadata": "UEsDBAoAAAAIACZZs1CrqSRGFQAAABMAAAAIAAAAYXBwLmpzb26rViopykxPTy1yy8kvL1ayio6tBQBQSwECFAAKAAAACAAmWbNQq6kkRhUAAAATAAAACAAAAAAAAAAAAAAAAAAAAAAAYXBwLmpzb25QSwUGAAAAAAEAAQA2AAAAOwAAAAAA"
+}
