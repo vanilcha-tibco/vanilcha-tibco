@@ -112,16 +112,21 @@ describe("Flogo AzureServiceBus", function () {
 
         baseWI.addAndConfigureLogMessage("AzureServiceBusPublish",logMessage, baseWI.commonElements().logLevelType.Info);
 
-        baseWI.appImplementationPageMethods().clickBackButton();
+        //baseWI.appImplementationPageMethods().clickBackButton();//commented for yogini for tci-2.0
         baseWI.pushAppAndVerify(appName);
+        browser.sleep(5000);
+
 
         var QueueSubscriberMessage = "QueueReceiverOutput: ";
 
         if (isFlogoEnterpriseEnabled != 'true') {
-            baseWI.appsHomePageMethods().navigateToApp(appName);
+            /*baseWI.appsHomePageMethods().navigateToApp(appName);
             browser.sleep(500);
             baseWI.appImplementationPageMethods().clickLogTab();
-            browser.findElement(by.id('tropos-interval-custom')).click();
+            browser.findElement(by.id('tropos-interval-custom')).click();*/ //commented by yogini for tci-2.0
+            baseWI.navigateToLogs(appName);
+            browser.sleep(3000);
+
             baseWI.checkTextInLogs(QueueSubscriberMessage);
             baseWI.checkTextInLogs(messageStringValueQueue);
             baseWI.checkTextInLogs(sessionIdValueQueue);

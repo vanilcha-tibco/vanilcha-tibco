@@ -187,6 +187,14 @@ this.connectionSelectlistoption = function (option) {
 
     };
 
+     //Scroll the page up to find + (add activity) button
+    this.scrollPage = function (){
+        browser.executeScript('window.scrollTo(0,200);').then(function () {
+            browser.sleep(1000);
+        }).then(function () {
+            browser.executeScript('window.scrollTo(0,0);');
+        });
+    };
 
     /**
      * Sets the AzureServiceBus Object as per the given parameter.

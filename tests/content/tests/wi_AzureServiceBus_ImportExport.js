@@ -10,6 +10,8 @@ var baseFE = azureServiceBusSettings.baseFE;
 var isFlogoEnterpriseEnabled = azureServiceBusSettings.settings.testingMode.isFlogoEnterpriseEnabled;
 var appTarget = azureServiceBusSettings.settings.appTarget;
 var dockerPort = azureServiceBusSettings.settings.dockerPort;
+var connectionDetails =  baseAzureServiceBus.connectionDetails;
+var path = require('path');
 
 
 describe("Flogo AzureServiceBus", function () {
@@ -49,18 +51,32 @@ describe("Flogo AzureServiceBus", function () {
     });
 
 
-    it("UC1 - App with one TopicSubscriber , Queue Reciever and a PublishActivity", function () {
+    it("UC1 - Create App with one TopicSubscriber , Queue Reciever and a PublishActivity  Export > delete app and connections > import back > edit imported connection > verify output", function () {
 
         //Declare and initialize variables
-        var appName = baseWI.commonMethods().generateRandomStringOfNCharacters(8);
+        var appName = "Azservicebus_export_test"
         var flowName = baseWI.commonMethods().generateRandomStringOfNCharacters(8);
         var flowDescription = baseWI.commonMethods().generateRandomStringOfNCharacters(20);
+        var basePath = ["azservicebus"];
+        var pathParam = ["message"];
+        var methods = ["GET"];
+        var inputData ='{"output":"string" }';
+
+        var cwd = process.cwd();
+        log.debug(cwd);
+
+        var Directory = cwd+"/WI/downloads/";
+        log.debug(Directory);
+        var exported_app = Directory + appName + ".json";
+        var pathToApp = path.resolve(__dirname,exported_app);
+
+        //Create azservicebus Connection
 
         browser.sleep(500);
         baseAzureServiceBus.connectionModalMethods().addConnection();
         browser.sleep(500);
 
-
+       //==================Create a new flow with AzureTopicSubscriber========================
         baseWI.createWIApp(appName);
 
         var queueNameValue = "\"queueauto\"";
@@ -75,22 +91,17 @@ describe("Flogo AzureServiceBus", function () {
         var messageString = "messageString";
         var sessionId = "SessionId";
 
-
         baseAzureServiceBus.AzureServiceBusPaletteMethods().createAzureTopicSubscriber("AzureTopicSubscriber","AzureTopicSubscriberdescription","AzureServiceBusConnection","topicauto","subauto","sessionautotopic");
-        //browser.driver.findElement(by.xpath("//div[contains(@data-flogo-node-type, 'node_add')]")).click();
-        //baseWI.addAndConfigureLogMessage("non_rest_trigger", 'string.concat("TCM Receiver Msg: ", $flow.tcm_msg)', baseWI.logMessageMethods().logLevelType.Info);
 
-        //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.LogMessage);
         var logMessage2 = 'string.concat("TopicSubscriberOutput: ", utility.renderJSON($flow.output,boolean.true()))';
         baseWI.addAndConfigureLogMessage("non_rest_trigger", logMessage2, baseWI.logMessageMethods().logLevelType.Info);
 
-        //baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage2, baseWI.logMessageMethods().logLevelType.Info,"Trigger");
         logger.info(logMessage2);
-
 
         browser.sleep(500);
         baseWI.appImplementationPageMethods().clickBackButton();
 
+        //==================Create a new flow with AzureQueueRecieverSubscriber========================
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().createAzureQueueReciever("AzureQueueReceiverSubscriber","AzureQueueReceiverdescription","AzureServiceBusConnection","queueauto","sessionautoqueue");
         //browser.driver.findElement(by.xpath("//div[contains(@data-flogo-node-type, 'node_add')]")).click();
@@ -102,19 +113,24 @@ describe("Flogo AzureServiceBus", function () {
 
         //baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage1, baseWI.logMessageMethods().logLevelType.Info,"Trigger");
         logger.info(logMessage1);
-
-
-        baseWI.appImplementationPageMethods().clickBackButton();
-        //baseWI.pushAppAndVerify(appName);
-        //baseWI.appsHomePageMethods().navigateToApp(appName);
         browser.sleep(500);
+        baseWI.appImplementationPageMethods().clickBackButton();
 
 
 
-        //Create Timer Flow with two publish activities
-        baseWI.createTimerFlow("PublishActivities","PublishActivities with Topic and Queue");
-        //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.TimerTrigger);
-        //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.TimerTrigger);
+
+
+        //===============Create REST Flow with two publish activities===============
+
+        baseWI.createRESTFlow(flowName, flowDescription, basePath[0], pathParam[0], methods, inputData);
+
+        var outputSettings = [[]];
+        var output = ["pathParam.message"];
+        var replySettings = inputData;
+        var reply = ["output"];
+        baseWI.configureServerlessRestTrigger(outputSettings, output, replySettings, reply);
+
+
         baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity(baseWI.commonElements().activityType.AzureServiceBusPublish);
         //baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(baseWI.commonElements().activityType.AzureServiceBusPublish);
 
@@ -155,15 +171,47 @@ describe("Flogo AzureServiceBus", function () {
         baseWI.addAndConfigureLogMessage("AzureServiceBusPublish1",logMessage, baseWI.commonElements().logLevelType.Info);
         //baseAzureServiceBus.AzureServiceBusPaletteMethods().addAndConfigureLogMessage(logMessage, baseWI.logMessageMethods().logLevelType.Info,"AzureServiceBusPublish1");
 
-       // baseWI.appImplementationPageMethods().clickBackButton();//commented for yogini for tci-2.0
-        baseWI.pushAppAndVerify(appName);
+        //Configure ReplyToHttpMessage
+        var inputMapperReplyKeys = ['output'];
+        var inputMapperReplyValues = ['string.concat(string.concat("QueueMessageOnPublish:",$activity[AzureServiceBusPublish].output.responseMessage),string.concat("TopicMessageOnPublish:",$activity[AzureServiceBusPublish1].output.responseMessage))'];
+        var returnSchema = [inputMapperReplyKeys, inputMapperReplyValues];
+        //baseAzureServiceBus.AzureServiceBusPaletteMethods().scrollPage();
+        baseWI.addAndConfigureReturnActivity("LogMessage", returnSchema, 0);
+        browser.sleep(3000);
+
+       //===============Export this flow=========
+        baseWI.appImplementationPageMethods().clickBackButton();
+        browser.sleep(500);
+        baseWI.appImplementationPageMethods().clickExportAppButton();
+        browser.sleep(2000);
+        //delete apps and connections
+        baseWI.deleteAllApps();
+        browser.sleep(500);
+
+        baseWI.deleteAllConnections();
+
+        //==============Import the flow and edit imported connectoin
+
+        var appName1 = "azservicebus_import_test"
+        baseWI.createWIApp(appName1);
+
+        baseWI.appImplementationPageMethods().clickImportAppButton();
+        baseWI.appImplementationPageElements().inputFile().sendKeys(pathToApp);
+        baseWI.appImplementationPageMethods().clickUploadButton();
+
+        browser.sleep(3000);
+        baseAzureServiceBus.connectionModalMethods().editConnection(connectionDetails.name);
         browser.sleep(5000);
 
-        //baseWI.navigateToApiTester(appName);
+        //========================================================
 
-        var TopicSubscriberMessage = "TopicSubscriberOutput: ";
-        var QueueSubscriberMessage = "QueueReceiverOutput: ";
-        //var PublishMessage = "QueueMessageOnPublish: /Published message to Queue : queueauto successfully / TopicMessageOnPublish: /Published message to Topic : topicauto successfully /";
+        baseAzureServiceBus.AzureServiceBusPaletteMethods().scrollPage();
+        baseWI.appsHomePageMethods().navigateToApp(appName1);
+        baseWI.pushAppAndVerify(appName1);
+        //baseWI.appsHomePageMethods().navigateToApp(appName1);
+        browser.sleep(3000);
+
+
 
         if (isFlogoEnterpriseEnabled != 'true') {
             //baseWI.appsHomePageMethods().navigateToApp(appName);
@@ -171,34 +219,42 @@ describe("Flogo AzureServiceBus", function () {
             //baseWI.appImplementationPageMethods().clickLogTab();
             //baseWI.navigateToApiTester(appName);baseWI.navigateToLogs(appName);//commented out by yokarale for tci-2.0
 
-            baseWI.navigateToLogs(appName);
+            baseWI.navigateToApiTester(appName1);
+            browser.sleep(2000);
 
 
-            //browser.findElement(by.id('tropos-interval-custom')).click();
-            browser.sleep(3000);
-            baseWI.checkTextInLogs(TopicSubscriberMessage);
-            baseWI.checkTextInLogs(QueueSubscriberMessage);
-            baseWI.checkTextInLogs(messageStringValueTopic);
-            baseWI.checkTextInLogs(messageStringValueQueue);
-            baseWI.checkTextInLogs(sessionIdValueQueue);
-            baseWI.checkTextInLogs(sessionIdValueTopic);
+
+            //TEST GET METHOD IN API TESTER PAGE
+            var pathParamNameAndValue = [[pathParam[0]], ["message"]];
+            var responseCodeAndResults = [200, [baseWI.utilities().readFile("../../../connectors/azservicebus/content/testdata/azservicebusTCI_output")]];
+            log.debug("after navigate ToApiTester");
+            baseWI.verifyResultsInApiTester(methods[0], basePath, pathParamNameAndValue, responseCodeAndResults, 0, 1);
+            log.debug("after verify result in api tester");
+            browser.sleep(1000);
+
+
+
         }
         else {
-            appNames = appName;
-            appNameToVerify = appName;
+            appNames = appName1;
+            appNameToVerify = appName1;
             logMessages = [];
-            verifyEndpoints = false;
+            verifyEndpoints = true;
             endpoints = [];
+            var response = baseWI.utilities().readFile("../../../connectors/azservicebus/content/testdata/azservicebusFE_output");
 
-            logMessages.push(TopicSubscriberMessage);
-            logMessages.push(QueueSubscriberMessage);
-            logMessages.push(messageStringValueTopic);
-            logMessages.push(messageStringValueQueue);
-            logMessages.push(sessionIdValueQueue);
-            logMessages.push(sessionIdValueTopic);
+            var requestParams_req1 = {
+                "method": methods[0], "pathParamName": basePath, "pathParamValue": "message",
+                "queryParams": {},
+                "headerParams": {},
+                //"inputData": '1',
+                "expectedResponse": response
+            };
+
+            var endpoint1 = [requestParams_req1.method, requestParams_req1.pathParamName, requestParams_req1.pathParamValue,
+                requestParams_req1.queryParams, requestParams_req1.headerParams, requestParams_req1.expectedResponse];
+            endpoints.push(endpoint1);
         }
-
-
 
 
     });

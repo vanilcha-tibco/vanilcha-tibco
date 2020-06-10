@@ -35,6 +35,7 @@ var connectionModalElements = function () {
 
     this.AzureServiceBusLoginConnectionButton = function () {
         return element(by.xpath("//button[contains(@class,'btn btn-primary pull-right') and contains(text(),'Login')]"));
+        //return element(by.css('.btn.btn-primary'));
     };
 };
 module.exports = new connectionModalElements();
