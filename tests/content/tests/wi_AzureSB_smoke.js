@@ -1,5 +1,7 @@
 /**
  * Created by Prerna Dogra on 27/11/2019.
+ * Modified in tci 2.0 release by yokarale on 06/10/2020
+
  */
 var baseAzureServiceBus = require('./../baseAzureServiceBus.js');
 var azureServiceBusConnection = baseAzureServiceBus.connectionDetails;
