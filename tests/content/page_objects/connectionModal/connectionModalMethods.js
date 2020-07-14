@@ -126,6 +126,7 @@ var connectionModalMethods = function () {
     this.AzureServiceBusConnection = function (checkSymbolForConnection) {
         checkSymbolForConnection = checkSymbolForConnection || true;
         loggerFile.debug("Adding AzureServiceBus Connection Details");
+        browser.sleep(3000);
         that.setAzureServiceBusConnectionName(connectionDetails.name);
         that.setAzureServiceBusConnectionDescription(connectionDetails.description);
         that.setAzureServiceBusAuthRule(connectionDetails.azureservicebusAuthRule);
