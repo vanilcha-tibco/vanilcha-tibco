@@ -28,8 +28,8 @@ describe("Flogo AzureServiceBus", function () {
     });
 
     afterAll(function () {
-        //baseWI.deleteAllApps();
-       // baseWI.deleteAllConnections();
+        baseWI.deleteAllApps();
+        baseWI.deleteAllConnections();
 
     });
 
