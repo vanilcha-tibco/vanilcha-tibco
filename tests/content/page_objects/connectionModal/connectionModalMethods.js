@@ -126,7 +126,7 @@ var connectionModalMethods = function () {
     this.AzureServiceBusConnection = function (checkSymbolForConnection) {
         checkSymbolForConnection = checkSymbolForConnection || true;
         loggerFile.debug("Adding AzureServiceBus Connection Details");
-        browser.sleep(3000);
+        browser.sleep(4000);
         that.setAzureServiceBusConnectionName(connectionDetails.name);
         that.setAzureServiceBusConnectionDescription(connectionDetails.description);
         that.setAzureServiceBusAuthRule(connectionDetails.azureservicebusAuthRule);
@@ -162,6 +162,7 @@ var connectionModalMethods = function () {
         loggerFile.debug("Adding AzureServiceBus Connection");
 
         TCI.Header.goToConnectionsPage();
+        browser.sleep(4000);
         //TCI.Header.waitForPageToBeLoaded;
 
         TCI.ConnectionsPage.isConnectionPresent(connectionDetails.name).then(function(isPre) {
