@@ -93,7 +93,7 @@ this.connectionSelectlistoption = function (option) {
 
         baseWI.createFlowWindowMethods().clickCopySchemaButton();
         baseWI.flowDesignPageMethods().clickFlowInputAndOutputBar();
-
+        browser.sleep(500);
         browser.findElement(by.xpath("//a[contains(@class,'triggers-list-element')]")).click();
         //browser.sleep(500);
         browser.findElement(by.xpath("//input[@id='queue']")).sendKeys(QueueName);

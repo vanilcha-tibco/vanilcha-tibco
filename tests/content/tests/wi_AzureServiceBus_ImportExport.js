@@ -187,9 +187,9 @@ describe("Flogo AzureServiceBus", function () {
 
        //===============Export this flow=========
         baseWI.appImplementationPageMethods().clickBackButton();
-        browser.sleep(500);
+        browser.sleep(1000);
         baseWI.appImplementationPageMethods().clickExportAppButton();
-        browser.sleep(2000);
+        browser.sleep(2500);
         //delete apps and connections
         baseWI.deleteAllApps();
         browser.sleep(500);
