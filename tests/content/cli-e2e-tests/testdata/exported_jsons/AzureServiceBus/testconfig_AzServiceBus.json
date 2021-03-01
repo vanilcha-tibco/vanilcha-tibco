@@ -9,6 +9,6 @@
         "Reply":"Success"
       },
       "appProperties":false,
-      "expected": {"output": " /Published message to Topic : newtopic successfully /  /Published message to Queue : queuesession successfully / "}
+      "expected": {"output": " /Published message to Topic : topic2 successfully /  /Published message to Queue : queuesession successfully / "}
     }]
   }

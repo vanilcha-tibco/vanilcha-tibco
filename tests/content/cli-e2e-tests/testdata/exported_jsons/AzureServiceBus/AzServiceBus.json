@@ -11,12 +11,12 @@
         "git.tibco.com/git/product/ipaas/wi-contrib.git/function/utility",
         "github.com/project-flogo/contrib/function/string"
     ],
-    "name": "serviceBus",
-    "description": " ",
+    "name": "AzServiceBus",
+    "description": "",
     "version": "1.1.0",
     "type": "flogo:app",
     "appModel": "1.1.1",
-    "feVersion": "2.9.0",
+    "tags": [],
     "triggers": [
         {
             "ref": "#queuereceiver",
@@ -24,7 +24,7 @@
             "description": "",
             "settings": {
                 "azservicebusConnection": {
-                    "id": "76f7b640-dc63-11ea-822c-2b1f1b14348f",
+                    "id": "11743260-7a67-11eb-a4e4-25823250f05d",
                     "type": "flogo:connector",
                     "version": "1.1.0",
                     "name": "azservicebus-connection",
@@ -139,11 +139,14 @@
                     "schemaMap": {},
                     "iteratorAccumulate": false,
                     "accessOutputInInput": false,
+                    "taskMetadata": {},
                     "isValid": true,
-                    "lastUpdatedTime": 1597213082405,
-                    "user": "flogo",
+                    "createdTime": 1614586865798,
+                    "lastUpdatedTime": 1614586924054,
+                    "user": "5c3qk627l43b5m5uq4dvd2aafecity5z",
                     "connectorName": "servicebus110",
-                    "connectorDescription": " "
+                    "connectorDescription": " ",
+                    "isGlobal": false
                 }
             },
             "id": "AzureServiceBusQueueReceiver",
@@ -184,7 +187,7 @@
             "description": "",
             "settings": {
                 "azservicebusConnection": {
-                    "id": "76f7b640-dc63-11ea-822c-2b1f1b14348f",
+                    "id": "11743260-7a67-11eb-a4e4-25823250f05d",
                     "type": "flogo:connector",
                     "version": "1.1.0",
                     "name": "azservicebus-connection",
@@ -299,11 +302,14 @@
                     "schemaMap": {},
                     "iteratorAccumulate": false,
                     "accessOutputInInput": false,
+                    "taskMetadata": {},
                     "isValid": true,
-                    "lastUpdatedTime": 1597213082405,
-                    "user": "flogo",
+                    "createdTime": 1614586865798,
+                    "lastUpdatedTime": 1614586924054,
+                    "user": "5c3qk627l43b5m5uq4dvd2aafecity5z",
                     "connectorName": "servicebus110",
-                    "connectorDescription": " "
+                    "connectorDescription": " ",
+                    "isGlobal": false
                 }
             },
             "id": "AzureServiceBusTopicSubscriber",
@@ -311,7 +317,7 @@
                 {
                     "description": "",
                     "settings": {
-                        "topic": "newtopic",
+                        "topic": "topic2",
                         "subscriptionName": "NewSub",
                         "sessionId": "session008",
                         "valueType": "String"
@@ -346,6 +352,7 @@
                 "port": 9999,
                 "APISpecUpdate": false,
                 "swagger": "",
+                "swaggerVersion": "v2",
                 "secureConnection": false,
                 "serverKey": "",
                 "caCertificate": ""
@@ -364,10 +371,13 @@
                         "settings": {
                             "flowURI": "res://flow:Publish"
                         },
+                        "input": {
+                            "headers": "=$.headers"
+                        },
                         "output": {
                             "data": {
                                 "mapping": {
-                                    "output": "=$.message"
+                                    "output": "=$.data.output"
                                 }
                             }
                         }
@@ -540,7 +550,7 @@
                             "ref": "#publish",
                             "input": {
                                 "Connection": {
-                                    "id": "76f7b640-dc63-11ea-822c-2b1f1b14348f",
+                                    "id": "11743260-7a67-11eb-a4e4-25823250f05d",
                                     "type": "flogo:connector",
                                     "version": "1.1.0",
                                     "name": "azservicebus-connection",
@@ -655,11 +665,14 @@
                                     "schemaMap": {},
                                     "iteratorAccumulate": false,
                                     "accessOutputInInput": false,
+                                    "taskMetadata": {},
                                     "isValid": true,
-                                    "lastUpdatedTime": 1597213082405,
-                                    "user": "flogo",
+                                    "createdTime": 1614586865798,
+                                    "lastUpdatedTime": 1614586924054,
+                                    "user": "5c3qk627l43b5m5uq4dvd2aafecity5z",
                                     "connectorName": "servicebus110",
-                                    "connectorDescription": " "
+                                    "connectorDescription": " ",
+                                    "isGlobal": false
                                 },
                                 "entityType": "Queue",
                                 "entityName": "",
@@ -701,7 +714,7 @@
                             "ref": "#publish",
                             "input": {
                                 "Connection": {
-                                    "id": "76f7b640-dc63-11ea-822c-2b1f1b14348f",
+                                    "id": "11743260-7a67-11eb-a4e4-25823250f05d",
                                     "type": "flogo:connector",
                                     "version": "1.1.0",
                                     "name": "azservicebus-connection",
@@ -816,18 +829,21 @@
                                     "schemaMap": {},
                                     "iteratorAccumulate": false,
                                     "accessOutputInInput": false,
+                                    "taskMetadata": {},
                                     "isValid": true,
-                                    "lastUpdatedTime": 1597213082405,
-                                    "user": "flogo",
+                                    "createdTime": 1614586865798,
+                                    "lastUpdatedTime": 1614586924054,
+                                    "user": "5c3qk627l43b5m5uq4dvd2aafecity5z",
                                     "connectorName": "servicebus110",
-                                    "connectorDescription": " "
+                                    "connectorDescription": " ",
+                                    "isGlobal": false
                                 },
                                 "entityType": "Topic",
                                 "entityName": "",
                                 "input": {
                                     "mapping": {
                                         "parameters": {
-                                            "topicName": "newtopic",
+                                            "topicName": "topic2",
                                             "messageString": "testmesage2",
                                             "brokerProperties": {
                                                 "SessionId": "session008"
@@ -862,7 +878,12 @@
                             "ref": "#actreturn",
                             "settings": {
                                 "mappings": {
-                                    "message": "=string.concat($activity[AzureServiceBusPublish1].output.responseMessage,$activity[AzureServiceBusPublish].output.responseMessage)"
+                                    "code": 200,
+                                    "data": {
+                                        "mapping": {
+                                            "output": "=string.concat(string.tostring($activity[AzureServiceBusPublish1].output.responseMessage), string.tostring($activity[AzureServiceBusPublish].output.responseMessage))"
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -885,13 +906,17 @@
                             "type": "integer"
                         },
                         {
-                            "name": "message",
-                            "type": "string"
+                            "name": "data",
+                            "type": "object",
+                            "schema": {
+                                "type": "json",
+                                "value": "{\"output\":{\"type\":\"string\"}}"
+                            }
                         }
                     ],
                     "fe_metadata": {
                         "input": "{\"type\":\"object\",\"title\":\"ReceiveHTTPMessage\",\"properties\":{\"headers\":{\"type\":\"object\",\"properties\":{\"Accept\":{\"type\":\"string\",\"visible\":false},\"Accept-Charset\":{\"type\":\"string\",\"visible\":false},\"Accept-Encoding\":{\"type\":\"string\",\"visible\":false},\"Content-Type\":{\"type\":\"string\",\"visible\":false},\"Content-Length\":{\"type\":\"string\",\"visible\":false},\"Connection\":{\"type\":\"string\",\"visible\":false},\"Cookie\":{\"type\":\"string\",\"visible\":false},\"Pragma\":{\"type\":\"string\",\"visible\":false}},\"required\":[]}}}",
-                        "output": "{\"type\":\"object\",\"title\":\"Inputs\",\"properties\":{\"code\":{\"type\":\"integer\",\"required\":false},\"message\":{\"type\":\"string\",\"required\":false}},\"required\":[]}"
+                        "output": "{\"type\":\"object\",\"title\":\"Inputs\",\"properties\":{\"code\":{\"type\":\"integer\",\"required\":false},\"data\":{\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"type\":\"object\",\"properties\":{\"output\":{\"type\":\"string\"}}}},\"required\":[]}"
                     }
                 },
                 "explicitReply": true
@@ -912,10 +937,10 @@
         {
             "name": "AzureServiceBus.servicebus110.Primary/Secondary_Key",
             "type": "string",
-            "value": "SECRET:lI2aZKPba6wQnwPLwhAhPEWTKbxcePOAhxzYRm8t14gTZuLL2BWhTHyCMKAD33WdWpZAGWsJZkvgmuZB"
+            "value": "SECRET:G9CTK5lKG4k63ZNJWnPVAHvKSTZbX72k3S5wsPxllFY1o3QM1PHEM9MSaJti9hkGc4mfgAf/24qHbNW3"
         }
     ],
     "connections": {},
     "contrib": "W3sicmVmIjoiZ2l0LnRpYmNvLmNvbS9naXQvcHJvZHVjdC9pcGFhcy93aS1henNlcnZpY2VidXMuZ2l0L3NyYy9hcHAvQXp1cmVTZXJ2aWNlQnVzIiwiczNsb2NhdGlvbiI6IlRpYmNvL0F6dXJlU2VydmljZUJ1cyJ9LHsicmVmIjoiZ2l0LnRpYmNvLmNvbS9naXQvcHJvZHVjdC9pcGFhcy93aS1jb250cmliLmdpdC9jb250cmlidXRpb25zL0dlbmVyYWwiLCJzM2xvY2F0aW9uIjoiVGliY28vR2VuZXJhbCJ9XQ==",
-    "fe_metadata": "UEsDBAoAAAAIAA40DFGrqSRGFQAAABMAAAAIAAAAYXBwLmpzb26rViopykxPTy1yy8kvL1ayio6tBQBQSwECFAAKAAAACAAONAxRq6kkRhUAAAATAAAACAAAAAAAAAAAAAAAAAAAAAAAYXBwLmpzb25QSwUGAAAAAAEAAQA2AAAAOwAAAAAA"
+    "fe_metadata": "UEsDBAoAAAAIAJpEYVKrqSRGFQAAABMAAAAIAAAAYXBwLmpzb26rViopykxPTy1yy8kvL1ayio6tBQBQSwECFAAKAAAACACaRGFSq6kkRhUAAAATAAAACAAAAAAAAAAAAAAAAAAAAAAAYXBwLmpzb25QSwUGAAAAAAEAAQA2AAAAOwAAAAAA"
 }
