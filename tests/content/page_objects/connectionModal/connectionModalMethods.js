@@ -188,7 +188,7 @@ var connectionModalMethods = function () {
                 TCI.ConnectionsPage.clickOnConnection(connectionname);
                 browser.sleep(20000);
                 that.setAzureServiceBusKey(connectionDetails.azureservicebusKey);
-                browser.sleep(1000);
+                browser.sleep(2000);
                 log.debug("before setting connection name");
                 that.clickAzureServiceBusConnectionButton();
                 browser.sleep(3000);

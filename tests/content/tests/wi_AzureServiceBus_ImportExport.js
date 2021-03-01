@@ -138,30 +138,36 @@ describe("Flogo AzureServiceBus", function () {
         baseAzureServiceBus.AzureServiceBusPaletteMethods().setEntityType("Queue");
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().clickInputTab();
+        browser.sleep(500);
 
         baseWI.commonActivityMethods().expandSchema(3);
-
+        browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(queueName, queueNameValue);
+        browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueQueue);
-
+        browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueQueue);
+        browser.sleep(500);
         baseWI.commonActivityMethods().clickCloseActivityConfiguration();
-
+        browser.sleep(500);
         baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity("AzureServiceBus Publish");
         //baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(baseWI.commonElements().activityType.AzureServiceBusPublish);
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().setConnectionName("AzureServiceBusConnection");
+        browser.sleep(500);
         baseAzureServiceBus.AzureServiceBusPaletteMethods().setEntityType("Topic");
-
+        browser.sleep(500);
         baseAzureServiceBus.AzureServiceBusPaletteMethods().clickInputTab();
         browser.sleep(500);
         baseWI.commonActivityMethods().expandSchema(3);
         browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(topicName, topicNameValue);
+        browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueTopic);
-
+        browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueTopic);
         console.log("Before click CLose Activity COnfiguration");
+        browser.sleep(500);
         baseWI.commonActivityMethods().clickCloseActivityConfiguration();
 
 
