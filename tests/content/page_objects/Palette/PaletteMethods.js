@@ -103,7 +103,7 @@ this.connectionSelectlistoption = function (option) {
         browser.findElement(by.xpath("//div[contains(text(),'Map to Flow Inputs')]")).click();
 
         that.configureTrigger_Output("output");
-        //browser.sleep(500);
+        browser.sleep(500);
         baseWI.flowDesignPageMethods().clickCloseServerlessTriggerConfig();
         //browser.sleep(500);
 
