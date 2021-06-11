@@ -1,5 +1,5 @@
 {
-    "name": "azservicebus-queuereceiver-trigger",
+    "name": "azservicebus-queuereceiver-trigger",     
     "type": "flogo:trigger",
     "title": "AzureServiceBus QueueReceiver",
     "version": "1.1.0",
@@ -13,10 +13,10 @@
       ]
     },
     "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/trigger/queuereceiver",
-    "settings": [
-      {
+    "handler": {
+    "settings": [{
         "name": "azservicebusConnection",
-        "type": "object",
+        "type": "connection",
         "required": true,
         "display": {
           "name": "AzureServiceBus Connection",
@@ -29,65 +29,82 @@
           "step": "Choose Connection"
         },
         "allowed": []
-      }
-    ],
-    "handler": {
-      "settings": [
-        {
-          "name": "queue",
-          "type": "string",
-          "required": true,
-          "display": {
-            "name": "Queue",
-            "description": "Name of the Queue to keep receiving message from",
-            "appPropertySupport": true
-          }
-        },
-        {
-          "name": "sessionId",
-          "type": "string",
-          "display": {
-            "name": "SessionId",
-            "description": "Id of the Session in the Queue to keep receiving message from",
-            "appPropertySupport": true
-          }
-        },
-        {
-          "name": "receiveMode",
-          "type": "string",
-          "display": {
-            "name": "Receive Mode",
-            "description": "Specify mode in which Service Bus receives messages"
-          },
-          "allowed": [
-            "PeekLock",
-            "ReceiveAndDelete"
-          ],
-          "value": "PeekLock"
-        },
-        {
-          "name": "valueType",
-          "type": "string",
-          "display": {
-            "name": "Value Deserializer",
-            "description": "Type of record value to be received",
-            "visible": false
-          },
-          "allowed": [
-            "String",
-            "JSON"
-          ],
-          "value": "String"
+      },
+      {
+        "name": "queue",
+        "type": "string",
+        "required": true,
+        "display": {
+          "name": "Queue",
+          "description": "Name of the Queue to keep receiving message from",
+          "appPropertySupport": true
         }
-      ]
+      },
+      {
+        "name": "deadletter",
+        "type": "boolean",
+        "required": true,
+        "value": false,
+        "display": {
+          "name": "DeadLetter Subscription",
+          "description": "AzureServiceBus DeadLetter Subscription",
+          "appPropertySupport": true
+        }
+                
+      },
+      {
+        "name": "sessionId",
+        "type": "string",
+        "display": {
+          "name": "SessionId",
+          "description": "Id of the Session in the Queue to keep receiving message from",
+          "appPropertySupport": true
+        }
+      },
+      {
+        "name": "receiveMode",
+        "type": "string",
+        "display": {
+          "name": "Receive Mode",
+          "description": "Specify mode in which Service Bus receives messages"
+        },
+        "allowed": [
+          "PeekLock",
+          "ReceiveAndDelete"
+        ],
+        "value": "PeekLock"
+      },
+      {
+        "name": "Timeout",
+        "type": "integer",
+        "display": {
+          "description": "Context Timeout for Service bus. (Timeout=0, is indefinite)",
+          "name": "Timeout",
+          "appPropertySupport": true
+        },
+        "value": 0
+      }, 
+      {
+        "name": "valueType",
+        "type": "string",
+        "display": {
+          "name": "Value Deserializer",
+          "description": "Type of record value to be received",
+          "visible": false
+        },
+        "allowed": [
+          "String",
+          "JSON"
+        ],
+        "value": "String"
+      }
+    ]
     },
     "outputs": [{
       "name": "output",
-      "type": "complex_object"
+      "type": "object"
     }],
-    "actions": [
-      {
+    "actions": [{
         "name": "Finish"
-      }
-    ]
+      }]
   }

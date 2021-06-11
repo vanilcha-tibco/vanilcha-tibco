@@ -9,30 +9,13 @@ import (
 	"io"
 	"time"
 
-	"git.tibco.com/git/product/ipaas/wi-contrib.git/connection/generic"
+	azureservicebusconnection "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection"
 	servicebus "github.com/Azure/azure-service-bus-go"
-	"github.com/TIBCOSoftware/flogo-lib/core/data"
-	"github.com/TIBCOSoftware/flogo-lib/logger"
+	"github.com/project-flogo/core/support/log"
 )
 
-type (
-	//Connection datastructure for storing AzureServiceBus connection details
-	Connection struct {
-		Name                           string
-		Description                    string
-		WI_STUDIO_OAUTH_CONNECTOR_INFO string
-		ClientID                       string
-		ClientSecret                   string
-		ConfigProperties               string
-		DocsMetadata                   string
-		docsObject                     map[string]interface{}
-		accessToken                    string
-		refreshToken                   string
-		baseURL                        string
-		sharedkey                      string
-		authruleName                   string
-	}
-)
+var azureServiceBusActivityLogger = log.ChildLogger(log.RootLogger(), "azureservicebus-activity")
+
 type (
 	// PublishRequest data structure
 	PublishRequest struct {
@@ -64,81 +47,11 @@ type PublishResponse struct {
 }
 
 // ServiceBusClientConfig to be used by util methods for getting connection config in Service Bus Triggers
-type ServiceBusClientConfig struct {
-	AuthorizationRuleName string
-	PrimarysecondaryKey   string
-	ResourceURI           string
-}
-
-var log = logger.GetLogger("az-servicebus")
-
-var cachedConnection map[string]*Connection
-
-func init() {
-	cachedConnection = map[string]*Connection{}
-}
-
-// GetConnection returns a deserialized AzureServiceBus conneciton object it does not establish a
-// connection with the AzureServiceBus. If a connection with the same id as in the context is
-// present in the cache, that connection from the cache is returned
-func GetConnection(connector interface{}) (connection *Connection, err error) {
-	genericConn, err := generic.NewConnection(connector)
-	if err != nil {
-		return nil, errors.New("Failed to load AzureServiceBus connection configuration")
-	}
-	connectionObject := connector.(map[string]interface{})
-	//settings := connectionObject["settings"]
-
-	id := connectionObject["id"].(string)
-	connection = cachedConnection[id]
-	if connection != nil {
-		return connection, nil
-	}
-
-	connection = &Connection{}
-	//connection.read(settings)
-	connection.baseURL, err = data.CoerceToString(genericConn.GetSetting("resourceURI"))
-	if err != nil {
-		return nil, fmt.Errorf("connection getter for resourceURI failed: %s", err)
-	}
-	log.Debugf("getconnection processed resourceURI: %s", connection.baseURL)
-	connection.authruleName, err = data.CoerceToString(genericConn.GetSetting("authorizationRuleName"))
-	if err != nil {
-		return nil, fmt.Errorf("connection getter for authorizationRuleName failed: %s", err)
-	}
-	log.Debugf("getconnection processed authorizationRuleName: %s", connection.authruleName)
-	connection.sharedkey, err = data.CoerceToString(genericConn.GetSetting("primarysecondaryKey"))
-	if err != nil {
-		return nil, fmt.Errorf("connection getter for primarysecondaryKey failed: %s", err)
-	}
-	log.Debugf("getconnection processed primarysecondaryKey: %s", connection.sharedkey)
-	cachedConnection[id] = connection
-	return connection, nil
-
-}
-
-func (connection *Connection) read(settings interface{}) (err error) {
-
-	//connectionRef := reflect.ValueOf(connection).Elem()
-	//TBD process other types later, right now only strings
-	for _, value := range settings.([]interface{}) {
-		element := value.(map[string]interface{})
-		switch element["name"].(string) {
-		case "resourceURI":
-			connection.baseURL = fmt.Sprint(element["value"].(string))
-			log.Info("While getting the connection /" + connection.baseURL)
-		case "authorizationRuleName":
-			connection.authruleName = fmt.Sprint(element["value"].(string))
-		case "primarysecondaryKey":
-			connection.sharedkey = fmt.Sprint(element["value"].(string))
-		}
-	}
-	return
-}
 
 // doCall is a private implementation helper for making HTTP calls into the AzureServiceBus System
-func (connection *Connection) doCall(objectType string, objectName string, inputData interface{}, methodName string) (responseData map[string]interface{}, err error) {
-	log.Info("Invoking Azure ServiceBus backend")
+func doCall(connection *azureservicebusconnection.AzureServiceBusSharedConfigManager, objectType string, objectName string, inputData interface{}, methodName string, timeout int) (responseData map[string]interface{}, err error) {
+
+	azureServiceBusActivityLogger.Info("Invoking Azure ServiceBus backend")
 	entityName := ""
 
 	actulaResponse := PublishResponse{}
@@ -155,7 +68,7 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 
 	//	log.Info("before creating the request")
 
-	connStr := "Endpoint=sb://" + connection.baseURL + ".servicebus.windows.net/;SharedAccessKeyName=" + connection.authruleName + ";SharedAccessKey=" + connection.sharedkey
+	connStr := "Endpoint=sb://" + connection.AzureToken.ResourceURI + ".servicebus.windows.net/;SharedAccessKeyName=" + connection.AzureToken.AuthorizationRuleName + ";SharedAccessKey=" + connection.AzureToken.PrimarysecondaryKey
 	ns, err := servicebus.NewNamespace(servicebus.NamespaceWithConnectionString(connStr))
 	if err != nil {
 		//fmt.Println(err)
@@ -166,7 +79,7 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 	var readError error
 	dataBytes, err := json.Marshal(inputMap["parameters"])
 	if err != nil {
-		log.Error(err)
+		azureServiceBusActivityLogger.Error(err)
 	}
 	publishInput := PublishRequest{}
 	json.Unmarshal(dataBytes, &publishInput)
@@ -217,25 +130,45 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 			// entityName = objectName
 		}
 		if publishInput.BrokerProperties.SessionId != "" {
-			log.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName + " with sessionId " + publishInput.BrokerProperties.SessionId)
+			azureServiceBusActivityLogger.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName + " with sessionId " + publishInput.BrokerProperties.SessionId)
 		} else {
-			log.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName)
+			azureServiceBusActivityLogger.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName)
 		}
 
-		q, err := getQueue(ns, entityName)
-		if err != nil {
-			//if err != nil {
-			log.Errorf("failed to fetch queue named %q\n", entityName)
-			actulaResponse.ResponseMessage = string(err.Error())
-			databytes, _ := json.Marshal(actulaResponse)
-			readError = err
-			err = json.Unmarshal(databytes, &readresponseData)
-			return readresponseData, readError
-			//}
+		if timeout > 0 {
+
+			q, err := getQueueWithTimeout(ns, entityName, timeout)
+			if err != nil {
+				//if err != nil {
+				azureServiceBusActivityLogger.Errorf("failed to fetch queue named %q\n", entityName)
+				actulaResponse.ResponseMessage = string(err.Error())
+				databytes, _ := json.Marshal(actulaResponse)
+				readError = err
+				err = json.Unmarshal(databytes, &readresponseData)
+				return readresponseData, readError
+				//}
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(timeout)) //timeout unit need to fixed
+			defer cancel()
+			readError = q.Send(ctx, &reqmessage)
+		} else {
+
+			q, err := getQueue(ns, entityName)
+			if err != nil {
+				//if err != nil {
+				azureServiceBusActivityLogger.Errorf("failed to fetch queue named %q\n", entityName)
+				actulaResponse.ResponseMessage = string(err.Error())
+				databytes, _ := json.Marshal(actulaResponse)
+				readError = err
+				err = json.Unmarshal(databytes, &readresponseData)
+				return readresponseData, readError
+				//}
+			}
+
+			ctx := context.Background()
+			readError = q.Send(ctx, &reqmessage)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		readError = q.Send(ctx, &reqmessage)
+
 	} else {
 		if inputparamtersmap["topicName"] != nil && inputparamtersmap["topicName"].(string) != "" {
 			//	queryURL = connection.baseURL + "/" + inputparamtersmap["topicName"].(string) + "/messages"
@@ -247,23 +180,42 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 		}
 
 		if publishInput.BrokerProperties.SessionId != "" {
-			log.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName + " with sessionId " + publishInput.BrokerProperties.SessionId)
+			azureServiceBusActivityLogger.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName + " with sessionId " + publishInput.BrokerProperties.SessionId)
 		} else {
-			log.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName)
-		}
-		t, err := getTopic(ns, entityName)
-		if err != nil {
-			log.Errorf("failed to fetch topic named %q\n", entityName)
-			actulaResponse.ResponseMessage = string(err.Error())
-			databytes, _ := json.Marshal(actulaResponse)
-			readError = err
-			err = json.Unmarshal(databytes, &readresponseData)
-			return readresponseData, readError
+			azureServiceBusActivityLogger.Info("Contacting Azure Servicebus System to send message to " + objectType + " :" + entityName)
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		readError = t.Send(ctx, &reqmessage)
+		if timeout > 0 {
+			t, err := getTopicWithTimeout(ns, entityName, timeout)
+			if err != nil {
+				azureServiceBusActivityLogger.Errorf("failed to fetch topic named %q\n", entityName)
+				actulaResponse.ResponseMessage = string(err.Error())
+				databytes, _ := json.Marshal(actulaResponse)
+				readError = err
+				err = json.Unmarshal(databytes, &readresponseData)
+				return readresponseData, readError
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(timeout))
+			defer cancel()
+			readError = t.Send(ctx, &reqmessage)
+
+		} else {
+
+			t, err := getTopic(ns, entityName)
+			if err != nil {
+				azureServiceBusActivityLogger.Errorf("failed to fetch topic named %q\n", entityName)
+				actulaResponse.ResponseMessage = string(err.Error())
+				databytes, _ := json.Marshal(actulaResponse)
+				readError = err
+				err = json.Unmarshal(databytes, &readresponseData)
+				return readresponseData, readError
+			}
+
+			ctx := context.Background()
+			readError = t.Send(ctx, &reqmessage)
+
+		}
+
 	}
 
 	if readError != nil {
@@ -278,19 +230,18 @@ func (connection *Connection) doCall(objectType string, objectName string, input
 		actulaResponse.ResponseMessage += " /Published message to " + objectType + " : " + entityName + " successfully / "
 		databytes, _ := json.Marshal(actulaResponse)
 		err = json.Unmarshal(databytes, &readresponseData)
-		log.Info(readresponseData)
+		azureServiceBusActivityLogger.Info(readresponseData)
 	}
 	return readresponseData, readError
 
 }
 
 // Call makes an HTTP API call into the AzureServiceBus System
-func (connection *Connection) Call(objectType string, objectName string, inputData interface{}, methodName string) (responseData map[string]interface{}, err error) {
-
+func Call(connection *azureservicebusconnection.AzureServiceBusSharedConfigManager, objectType string, objectName string, inputData interface{}, methodName string, timeout int) (responseData map[string]interface{}, err error) {
 	maxRetries := 2
 
 	for tries := 0; tries < maxRetries; tries++ {
-		responseData, err := connection.doCall(objectType, objectName, inputData, methodName)
+		responseData, err := doCall(connection, objectType, objectName, inputData, methodName, timeout)
 		if err != nil {
 			return nil, fmt.Errorf("backend invocation error: %s", err.Error())
 		}
@@ -315,7 +266,44 @@ func getBody(content interface{}) (io.Reader, error) {
 	return reqBody, nil
 }
 func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+
+	ctx := context.Background()
+	qm := ns.NewQueueManager()
+	queList, err := qm.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	queNotExist := true
+	for _, entry := range queList {
+		//	fmt.Println(idx, " ", entry.Name)
+		if queueName == entry.Name {
+			//	log.Info(queueName, " Queue found")
+			queNotExist = false
+			break
+		}
+	}
+	if queNotExist {
+		return nil, errors.New("Could not find the specified Queue :" + queueName)
+	}
+	qe, err := qm.Get(ctx, queueName)
+	if err != nil {
+		return nil, err
+	}
+	var q *servicebus.Queue
+	var queueError error
+	// need to test and remove below if else block
+	if qe != nil {
+		q, queueError = ns.NewQueue(queueName)
+	} else {
+		q = nil
+		queueError = errors.New("Could not find the specified Queue")
+	}
+	return q, queueError
+}
+
+func getQueueWithTimeout(ns *servicebus.Namespace, queueName string, timeout int) (*servicebus.Queue, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(timeout))
 	defer cancel()
 
 	qm := ns.NewQueueManager()
@@ -352,9 +340,7 @@ func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, er
 }
 
 func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-	defer cancel()
-
+	ctx := context.Background()
 	tm := ns.NewTopicManager()
 	topicList, err := tm.List(ctx)
 	if err != nil {
@@ -391,21 +377,43 @@ func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, er
 
 }
 
-// BuildConfigurationFromConnection is a util method to be used by Triggers for getting
-// ConnectionConfig details in Trigger runtime
-func BuildConfigurationFromConnection(connection interface{}) (*ServiceBusClientConfig, error) {
+func getTopicWithTimeout(ns *servicebus.Namespace, topicName string, timeout int) (*servicebus.Topic, error) {
 
-	conn, err := generic.NewConnection(connection)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(timeout))
+	defer cancel()
+
+	tm := ns.NewTopicManager()
+	topicList, err := tm.List(ctx)
 	if err != nil {
-		return nil, errors.New("Failed to load Kafaka client configuration")
+		return nil, err
 	}
-
-	connectionConfig := &ServiceBusClientConfig{}
-
-	connectionConfig.AuthorizationRuleName, _ = data.CoerceToString(conn.GetSetting("authorizationRuleName"))
-	connectionConfig.PrimarysecondaryKey, _ = data.CoerceToString(conn.GetSetting("primarysecondaryKey"))
-	connectionConfig.ResourceURI, _ = data.CoerceToString(conn.GetSetting("resourceURI"))
-
-	return connectionConfig, nil
+	topicNotExist := true
+	for _, entry := range topicList {
+		//	fmt.Println(idx, " ", entry.Name)
+		if topicName == entry.Name {
+			//	log.Info(topicName, " Topic found")
+			topicNotExist = false
+			break
+		}
+	}
+	if topicNotExist {
+		return nil, errors.New("Could not find the specified Topic :" + topicName)
+	}
+	te, err := tm.Get(ctx, topicName)
+	if err != nil {
+		return nil, err
+	}
+	var t *servicebus.Topic
+	var topicError error
+	// need to test and remove below if else block
+	if te != nil {
+		// session support
+		//	t, topicError = ns.NewTopic(ctx, topicName)
+		t, topicError = ns.NewTopic(topicName)
+	} else {
+		t = nil
+		topicError = errors.New("Could not find the specified Topic")
+	}
+	return t, topicError
 
 }

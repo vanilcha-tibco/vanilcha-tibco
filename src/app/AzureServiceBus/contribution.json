@@ -1,4 +1,10 @@
 {
     "name": "TIBCO Flogo connector for Microsoft Azure Service Bus",
-    "version": "1.1.0"
+    "version": "1.2.0",
+    "category": "AzureServiceBus",
+    "description": "TIBCO Flogo® Connector for AzureServiceBus allows you to perform actions on activities such as Twilio Queue and  Topic.",
+    "image": "connector/connection/icons/azure_service_bus.png"
 }
+
+
+

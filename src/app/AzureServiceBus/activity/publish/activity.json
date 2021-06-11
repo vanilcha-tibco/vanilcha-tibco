@@ -14,7 +14,7 @@
   "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/activity/publish",
   "inputs": [{
       "name": "Connection",
-      "type": "object",
+      "type": "connection",
       "required": true,
       "display": {
         "name": "Connection",
@@ -31,13 +31,23 @@
       "allowed": [ "Queue","Topic"],
       "display": {
         "name": "Entity Type",
-        "description": "AzureServiceBus entity type to publish message",
+        "description": "AzureServiceBus entity type to publish message",   
         "type": "dropdown",
         "selection": "single",
         "visible": true
       },
       "value":"Queue"           
-    },   
+    }, 
+    {
+      "name": "Timeout",
+      "type": "integer",
+      "display": {
+        "description": "Context Timeout for Service bus. (Timeout=0, is indefinite)",
+        "name": "Timeout",
+        "appPropertySupport": true
+      },
+      "value": 0
+    },  
     {
       "name": "entityName",
       "type": "string",
@@ -50,12 +60,12 @@
     },
     {
       "name": "input",
-      "type": "complex_object"
+      "type": "object"
     }    
   ],
 
   "outputs": [{
     "name": "output",
-    "type": "complex_object"
+    "type": "object"
   }]
 }

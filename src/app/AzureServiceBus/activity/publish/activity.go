@@ -5,68 +5,70 @@ import (
 	"net/http"
 
 	azservicebus "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus"
-	"github.com/TIBCOSoftware/flogo-lib/core/activity"
-	"github.com/TIBCOSoftware/flogo-lib/core/data"
-	"github.com/TIBCOSoftware/flogo-lib/logger"
+	azureservicebusconnection "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection"
+	"github.com/project-flogo/core/activity"
 )
 
-var log = logger.GetLogger("activity-az-servicebus-publish")
+//Oss upgrade--
 
-// Activity metadata datastructure for AzureServiceBus Activity
-type Activity struct {
-	metadata *activity.Metadata
+var activityMd = activity.ToMetadata(&Input{}, &Output{})
+
+func init() {
+	_ = activity.Register(&AzureServiceBusPublishActivity{}, New)
 }
 
-// NewActivity creates a new activity
-func NewActivity(metadata *activity.Metadata) activity.Activity {
-	return &Activity{metadata: metadata}
+func New(ctx activity.InitContext) (activity.Activity, error) {
+	return &AzureServiceBusPublishActivity{}, nil
 }
 
-// Metadata implements activity.Activity.Metadata
-func (a *Activity) Metadata() *activity.Metadata {
-	return a.metadata
+type AzureServiceBusPublishActivity struct {
 }
 
-//GetComplexValue safely get the object value
-func GetComplexValue(complexObject *data.ComplexObject) interface{} {
-	if complexObject != nil {
-		return complexObject.Value
-	}
-	return nil
+func (*AzureServiceBusPublishActivity) Metadata() *activity.Metadata {
+	return activityMd
 }
 
 // Eval implements activity.Activity.Eval
-func (a *Activity) Eval(context activity.Context) (done bool, err error) {
-	log.Info("AzureServiceBus publish message Activity")
-	connector := context.GetInput("Connection")
-	if connector == nil {
-		return false, fmt.Errorf("AzureServiceBus connection not configured")
-	}
+func (a *AzureServiceBusPublishActivity) Eval(context activity.Context) (done bool, err error) {
 
-	connection, err := azservicebus.GetConnection(connector)
+	context.Logger().Info("AzureServiceBus publish message Activity")
+	//log.Info("AzureServiceBus publish message Activity")
+	input := &Input{}
+
+	err = context.GetInputObject(input)
 	if err != nil {
-		return false, fmt.Errorf("Error getting AzureServiceBus connection %s", err.Error())
+		return false, err
 	}
 
-	log.Debug("Reading entity name")
+	connection, _ := input.AzureServiceBusConnection.(*azureservicebusconnection.AzureServiceBusSharedConfigManager)
+	context.Logger().Debug("Reading entity name")
 
-	oName := context.GetInput("entityName")
-	entityType := context.GetInput("entityType").(string)
-	entityName := oName.(string)
-	inputData := GetComplexValue(context.GetInput("input").(*data.ComplexObject))
-	if inputData == nil || inputData == "{}" {
+	oName := input.EntityName
+	timeout := input.Timeout
+	entityType := input.EntityType
+	entityName := oName
+	inputData := input.Input
+	if inputData == nil {
 		return false, activity.NewError(fmt.Sprintf("Input is required in publish activity for %s object", entityName), "AZSERVICEBUS-PUBLISH-4015", nil)
 	}
 
 	methodName := http.MethodPost
 
-	responseData, err := connection.Call(entityType, entityName, inputData, methodName)
+	responseData, err := azservicebus.Call(connection, entityType, entityName, inputData, methodName, timeout)
 	if err != nil {
 		return false, activity.NewError(fmt.Sprintf("Failed to perform Azure Service Bus publish message for %s, %s", entityType, err.Error()), "AZSERVICEBUS-PUBLISH-4014", nil)
 	}
 
-	outputComplex := &data.ComplexObject{Metadata: "", Value: responseData}
-	context.SetOutput("output", outputComplex)
+	objectResponse := make(map[string]interface{})
+	objectResponse["publish"] = responseData
+
+	output := &Output{}
+	output.Output = objectResponse
+	err = context.SetOutputObject(output)
+	if err != nil {
+		return false, err
+	}
+	context.Logger().Debug("AzureServicebus Publish Activity successfully executed")
 	return true, nil
 
 }
