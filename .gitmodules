@@ -2,3 +2,6 @@
 	path = scripts/cicd
 	url = https://github.com/tibco/wasp-cicd.git
 	ignore = dirty
+	[submodule "src/app/go.opencensus.io"]
+	path = src/app/go.opencensus.io
+	url = https://github.com/census-instrumentation/opencensus-go
