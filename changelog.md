@@ -73,3 +73,6 @@
 
 ## Fixed in 1.1.0.V9
 
+
+## Fixed in 1.2.0.V01
+
