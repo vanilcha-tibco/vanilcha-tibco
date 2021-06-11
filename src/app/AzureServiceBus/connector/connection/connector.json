@@ -3,7 +3,7 @@
   "name": "azservicebus-connection",
   "author": "TIBCO Software Inc.",
   "type": "flogo:connector",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "display": {
     "description": "Establish connection to your Azure ServiceBus account",
     "category": "AzureServiceBus",
