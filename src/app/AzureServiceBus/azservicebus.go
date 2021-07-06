@@ -137,7 +137,7 @@ func doCall(connection *azureservicebusconnection.AzureServiceBusSharedConfigMan
 
 		if timeout > 0 {
 
-			q, err := getQueueWithTimeout(ns, entityName, timeout)
+			q, isSession, err := getQueueWithTimeout(ns, entityName, timeout)
 			if err != nil {
 				//if err != nil {
 				azureServiceBusActivityLogger.Errorf("failed to fetch queue named %q\n", entityName)
@@ -148,12 +148,20 @@ func doCall(connection *azureservicebusconnection.AzureServiceBusSharedConfigMan
 				return readresponseData, readError
 				//}
 			}
+			if isSession == true && publishInput.BrokerProperties.SessionId == "" {
+				actulaResponse.ResponseMessage = string("Session Id is Requied, Entered queue is Session Enabled")
+				databytes, _ := json.Marshal(actulaResponse)
+				readError = errors.New("Missing SessionId, input queue is Session Enabled")
+				err = json.Unmarshal(databytes, &readresponseData)
+				return readresponseData, readError
+
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(timeout)) //timeout unit need to fixed
 			defer cancel()
 			readError = q.Send(ctx, &reqmessage)
 		} else {
 
-			q, err := getQueue(ns, entityName)
+			q, isSession, err := getQueue(ns, entityName)
 			if err != nil {
 				//if err != nil {
 				azureServiceBusActivityLogger.Errorf("failed to fetch queue named %q\n", entityName)
@@ -163,6 +171,15 @@ func doCall(connection *azureservicebusconnection.AzureServiceBusSharedConfigMan
 				err = json.Unmarshal(databytes, &readresponseData)
 				return readresponseData, readError
 				//}
+			}
+
+			if isSession == true && publishInput.BrokerProperties.SessionId == "" {
+				actulaResponse.ResponseMessage = string("Session Id is Requied, Entered queue is Session Enabled")
+				databytes, _ := json.Marshal(actulaResponse)
+				readError = errors.New("Missing SessionId, input queue is Session Enabled")
+				err = json.Unmarshal(databytes, &readresponseData)
+				return readresponseData, readError
+
 			}
 
 			ctx := context.Background()
@@ -265,13 +282,13 @@ func getBody(content interface{}) (io.Reader, error) {
 	}
 	return reqBody, nil
 }
-func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, error) {
+func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, bool, error) {
 
 	ctx := context.Background()
 	qm := ns.NewQueueManager()
 	queList, err := qm.List(ctx)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	queNotExist := true
 	for _, entry := range queList {
@@ -283,11 +300,11 @@ func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, er
 		}
 	}
 	if queNotExist {
-		return nil, errors.New("Could not find the specified Queue :" + queueName)
+		return nil, false, errors.New("Could not find the specified Queue :" + queueName)
 	}
 	qe, err := qm.Get(ctx, queueName)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	var q *servicebus.Queue
 	var queueError error
@@ -298,10 +315,13 @@ func getQueue(ns *servicebus.Namespace, queueName string) (*servicebus.Queue, er
 		q = nil
 		queueError = errors.New("Could not find the specified Queue")
 	}
-	return q, queueError
+
+	isSession := *qe.QueueDescription.RequiresSession
+
+	return q, isSession, queueError
 }
 
-func getQueueWithTimeout(ns *servicebus.Namespace, queueName string, timeout int) (*servicebus.Queue, error) {
+func getQueueWithTimeout(ns *servicebus.Namespace, queueName string, timeout int) (*servicebus.Queue, bool, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(timeout))
 	defer cancel()
@@ -309,7 +329,7 @@ func getQueueWithTimeout(ns *servicebus.Namespace, queueName string, timeout int
 	qm := ns.NewQueueManager()
 	queList, err := qm.List(ctx)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	queNotExist := true
 	for _, entry := range queList {
@@ -321,11 +341,11 @@ func getQueueWithTimeout(ns *servicebus.Namespace, queueName string, timeout int
 		}
 	}
 	if queNotExist {
-		return nil, errors.New("Could not find the specified Queue :" + queueName)
+		return nil, false, errors.New("Could not find the specified Queue :" + queueName)
 	}
 	qe, err := qm.Get(ctx, queueName)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	var q *servicebus.Queue
 	var queueError error
@@ -336,7 +356,10 @@ func getQueueWithTimeout(ns *servicebus.Namespace, queueName string, timeout int
 		q = nil
 		queueError = errors.New("Could not find the specified Queue")
 	}
-	return q, queueError
+
+	isSession := *qe.QueueDescription.RequiresSession
+
+	return q, isSession, queueError
 }
 
 func getTopic(ns *servicebus.Namespace, topicName string) (*servicebus.Topic, error) {

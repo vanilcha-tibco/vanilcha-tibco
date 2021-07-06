@@ -389,40 +389,50 @@ func processMessage(msg *servicebus.Message, handler trigger.Handler, valueType 
 	var outputRoot = map[string]interface{}{}
 	var brokerProperties = map[string]interface{}{}
 	outputData := make(map[string]interface{})
+	output := &Output{}
 
-	if msg.Data != nil {
-		//deserVal := trcvr.valueType
-		if valueType == "String" {
+	//	if msg.Data != nil {
+
+	//deserVal := trcvr.valueType
+	if valueType == "String" {
+
+		if msg.Data != nil {
 			text := string(msg.Data)
 			outputRoot["messageString"] = string(text)
-			brokerProperties["ContentType"] = msg.ContentType
-			brokerProperties["CorrelationId"] = msg.CorrelationID
-			//brokerPropertiesResp["DeliveryCount"] = msg.DeliveryCount
-			brokerProperties["Label"] = msg.Label
-			//brokerPropertiesResp["MessageId"] = msg.ID
-			brokerProperties["PartitionKey"] = &msg.SystemProperties.PartitionKey
-			brokerProperties["ReplyTo"] = msg.ReplyTo
-			if isSession {
-				brokerProperties["SessionId"] = *msg.SessionID
-			}
-			ttl := msg.TTL.String()
-			ttlint, _ := strconv.Atoi(ttl)
-			brokerProperties["TimeToLive"] = ttlint
-			brokerProperties["To"] = msg.To
-			//brokerPropertiesResp["ViaPartitionKey"] = msg.SystemProperties.ViaPartitionKey
-			//	log.Info("message received  data ", string(msg.Data), " sessionid ", msg.ID, " : ", *msg.SessionID)
-			//complexBrokerProperties := &data.ComplexObject{Metadata: "", Value: brokerProperties}
-			//outputRoot["brokerProperties"] = complexBrokerProperties.Value
 
-			outputRoot["brokerProperties"] = brokerProperties
-
-			//outputComplex := &data.ComplexObject{Metadata: "", Value: outputRoot}
-			//outputData["output"] = outputComplex
-			outputData["output"] = outputRoot
-		} else if valueType == "JSON" {
-			// future use
+		} else {
+			outputRoot["messageString"] = string("")
 		}
+
+		brokerProperties["ContentType"] = msg.ContentType
+		brokerProperties["CorrelationId"] = msg.CorrelationID
+		//brokerPropertiesResp["DeliveryCount"] = msg.DeliveryCount
+		brokerProperties["Label"] = msg.Label
+		//brokerPropertiesResp["MessageId"] = msg.ID
+		brokerProperties["PartitionKey"] = &msg.SystemProperties.PartitionKey
+		brokerProperties["ReplyTo"] = msg.ReplyTo
+		if isSession {
+			brokerProperties["SessionId"] = *msg.SessionID
+		}
+		ttl := msg.TTL.String()
+		ttlint, _ := strconv.Atoi(ttl)
+		brokerProperties["TimeToLive"] = ttlint
+		brokerProperties["To"] = msg.To
+		//brokerPropertiesResp["ViaPartitionKey"] = msg.SystemProperties.ViaPartitionKey
+		//	log.Info("message received  data ", string(msg.Data), " sessionid ", msg.ID, " : ", *msg.SessionID)
+		//complexBrokerProperties := &data.ComplexObject{Metadata: "", Value: brokerProperties}
+		//outputRoot["brokerProperties"] = complexBrokerProperties.Value
+
+		outputRoot["brokerProperties"] = brokerProperties
+
+		//outputComplex := &data.ComplexObject{Metadata: "", Value: outputRoot}
+		//outputData["output"] = outputComplex
+		outputData["output"] = outputRoot
+		output.Output = outputData
+	} else if valueType == "JSON" {
+		// future use
 	}
+	//}
 
 	_, err := handler.Handle(context.Background(), outputData)
 	if err != nil {

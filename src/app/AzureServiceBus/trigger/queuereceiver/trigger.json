@@ -2,7 +2,7 @@
     "name": "azservicebus-queuereceiver-trigger",     
     "type": "flogo:trigger",
     "title": "AzureServiceBus QueueReceiver",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "author": "TIBCO Software Inc.",
     "display": {
       "category": "AzureServiceBus",
@@ -69,10 +69,9 @@
           "description": "Specify mode in which Service Bus receives messages"
         },
         "allowed": [
-          "PeekLock",
           "ReceiveAndDelete"
         ],
-        "value": "PeekLock"
+        "value": "ReceiveAndDelete"   
       },
       {
         "name": "Timeout",
