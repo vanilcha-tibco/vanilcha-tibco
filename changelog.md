@@ -82,3 +82,6 @@
 
 ## Fixed in 1.2.0.V2
 
+
+## Fixed in 1.2.0.V3
+
