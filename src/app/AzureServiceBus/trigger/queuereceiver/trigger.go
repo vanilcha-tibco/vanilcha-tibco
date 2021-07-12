@@ -68,6 +68,8 @@ type QueueReceiver struct {
 	isDeadLetter        bool
 	timeOut             int
 	ctx                 context.Context
+	count               int
+	interval            int
 }
 
 // StepSessionHandler is a comment
@@ -154,6 +156,8 @@ func (t *SBQueueReceiverTrigger) Initialize(ctx trigger.InitContext) error {
 		qrcvr.done = make(chan bool)
 		qrcvr.isDeadLetter = handlerSettings.Deadletter
 		qrcvr.timeOut = handlerSettings.Timeout
+		qrcvr.count = handlerSettings.Count
+		qrcvr.interval = handlerSettings.Interval
 		t.queueReceivers = append(t.queueReceivers, qrcvr)
 	}
 
@@ -336,6 +340,24 @@ func (qrcvr *QueueReceiver) listen() {
 		ssh.queueName = qrcvr.queueName
 		qrcvr.stepSessionHandler = ssh
 		err = queueSession.ReceiveOne(ctx, ssh)
+		if err != nil && qrcvr.count > 0 && qrcvr.interval > 0 {
+
+			maxRetries := qrcvr.count
+
+			for tries := 0; tries < maxRetries; tries++ {
+				err = queueSession.ReceiveOne(ctx, ssh)
+				if err != nil {
+					sleepInterval := time.Duration(qrcvr.interval) * time.Millisecond
+					fmt.Errorf("backend invocation error: %s", err.Error())
+					time.Sleep(sleepInterval)
+				}
+
+			}
+
+			logCache.Error(err.Error())
+			return
+		}
+
 	} else {
 		logCache.Infof("QueueReceiver will now poll on Queue [%s] which does not have session support", qrcvr.queueName)
 		err = qrcvr.q.Receive(ctx, servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
@@ -346,10 +368,32 @@ func (qrcvr *QueueReceiver) listen() {
 			return message.Abandon(ctx)
 		}))
 	}
-	if err != nil {
+	if err != nil && qrcvr.count > 0 && qrcvr.interval > 0 {
+
+		maxRetries := qrcvr.count
+
+		for tries := 0; tries < maxRetries; tries++ {
+			err = qrcvr.q.Receive(ctx, servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
+				err2 := processMessage(message, qrcvr.handler, qrcvr.valueType, qrcvr.queueName, false)
+				if err2 == nil {
+					return message.Complete(ctx)
+				}
+				return message.Abandon(ctx)
+			}))
+
+			if err != nil {
+				sleepInterval := time.Duration(qrcvr.interval) * time.Millisecond
+				fmt.Errorf("backend invocation error: %s", err.Error())
+				time.Sleep(sleepInterval)
+			}
+
+		}
+
 		logCache.Error(err.Error())
 		return
 	}
+	//logCache.Error(err.Error())
+	//return
 
 }
 
@@ -394,7 +438,7 @@ func processMessage(msg *servicebus.Message, handler trigger.Handler, valueType 
 			outputRoot["messageString"] = string(text)
 
 		} else {
-			outputRoot["messageString"] = string("")
+			outputRoot["messageString"] = string("") //blank   //need to remove, add warining
 		}
 
 		//put check here  msg.Data != nil  "" value

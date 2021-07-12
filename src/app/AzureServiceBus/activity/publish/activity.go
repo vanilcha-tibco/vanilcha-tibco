@@ -59,11 +59,11 @@ func (a *AzureServiceBusPublishActivity) Eval(context activity.Context) (done bo
 		return false, activity.NewError(fmt.Sprintf("Failed to perform Azure Service Bus publish message for %s, %s", entityType, err.Error()), "AZSERVICEBUS-PUBLISH-4014", nil)
 	}
 
-	objectResponse := make(map[string]interface{})
-	objectResponse["publish"] = responseData
+	//objectResponse := make(map[string]interface{})
+	//objectResponse["publish"] = responseData
 
 	output := &Output{}
-	output.Output = objectResponse
+	output.Output = responseData
 	err = context.SetOutputObject(output)
 	if err != nil {
 		return false, err

@@ -52,11 +52,11 @@
       }
     },   
     {
-      "name": "primarysecondaryKey",
+      "name": "primarysecondaryKey",  
       "type": "string",
       "required": true,
       "display": {
-          "name": "Primary/Secondary Key",
+          "name": "SharedAccessKey",  
           "visible": true,
           "type": "password",
           "encryptable":true,

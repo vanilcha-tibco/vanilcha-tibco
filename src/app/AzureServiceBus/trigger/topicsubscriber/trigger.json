@@ -81,7 +81,28 @@
           "appPropertySupport": true
         },
         "value": 0
+      },
+      {
+        "name": "Count",
+        "type": "integer",
+        "display": {
+          "description": "The maximum number of times to retry Trigger",
+          "name": "Count",
+          "appPropertySupport": true
+        },
+        "value": 0
       }, 
+      {
+        "name": "Interval",
+        "type": "integer",
+        "display": {
+          "description": "The time interval (in ms) between each retry attempt",
+          "name": "Interval",
+          "appPropertySupport": true
+        },
+        "value": 0
+      }, 
+ 
       {
         "name": "valueType",
         "type": "string",

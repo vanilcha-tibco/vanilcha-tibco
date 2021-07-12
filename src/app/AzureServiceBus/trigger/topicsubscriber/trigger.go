@@ -68,6 +68,8 @@ type TopicSubscriber struct {
 	isDeadLetter        bool
 	timeOut             int
 	ctx                 context.Context
+	count               int
+	interval            int
 }
 
 // StepSessionHandler is a comment
@@ -156,6 +158,8 @@ func (t *SBTopicSubscriberTrigger) Initialize(ctx trigger.InitContext) error {
 		trcvr.done = make(chan bool)
 		trcvr.isDeadLetter = handlerSettings.DeadLetter
 		trcvr.timeOut = handlerSettings.Timeout
+		trcvr.count = handlerSettings.Count
+		trcvr.interval = handlerSettings.Interval
 		t.topicSubscribers = append(t.topicSubscribers, trcvr)
 	}
 
@@ -336,6 +340,23 @@ func (trcvr *TopicSubscriber) subscribe() {
 
 		trcvr.stepSessionHandler = ssh
 		err = ss.ReceiveOne(ctx, ssh)
+		if err != nil && trcvr.count > 0 && trcvr.interval > 0 {
+
+			maxRetries := trcvr.count
+
+			for tries := 0; tries < maxRetries; tries++ {
+				err = ss.ReceiveOne(ctx, ssh)
+				if err != nil {
+					sleepInterval := time.Duration(trcvr.interval) * time.Millisecond
+					fmt.Errorf("backend invocation error: %s", err.Error())
+					time.Sleep(sleepInterval)
+				}
+
+			}
+			logCache.Error(err.Error())
+			return
+		}
+
 	} else {
 		logCache.Infof("TopicSubscriber will now poll on subscription [%s] which does not have session support for topic [%s]", trcvr.subscriptionName, trcvr.topicName)
 		err = trcvr.subscription.Receive(ctx, servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
@@ -347,7 +368,27 @@ func (trcvr *TopicSubscriber) subscribe() {
 		}))
 	}
 
-	if err != nil {
+	if err != nil && trcvr.count > 0 && trcvr.interval > 0 {
+
+		maxRetries := trcvr.count
+
+		for tries := 0; tries < maxRetries; tries++ {
+			err = trcvr.subscription.Receive(ctx, servicebus.HandlerFunc(func(ctx context.Context, message *servicebus.Message) error {
+				err2 := processMessage(message, trcvr.handler, trcvr.valueType, trcvr.topicName, trcvr.subscriptionName, false)
+				if err2 == nil {
+					return message.Complete(ctx)
+				}
+				return message.Abandon(ctx)
+			}))
+
+			if err != nil {
+				sleepInterval := time.Duration(trcvr.interval) * time.Millisecond
+				fmt.Errorf("backend invocation error: %s", err.Error())
+				time.Sleep(sleepInterval)
+			}
+
+		}
+
 		logCache.Error(err.Error())
 		return
 	}

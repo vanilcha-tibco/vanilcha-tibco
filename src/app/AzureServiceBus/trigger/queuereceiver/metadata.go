@@ -13,6 +13,8 @@ type HandlerSettings struct {
 	ValueType   string             `md:"valueType"`
 	Deadletter  bool               `md:"deadletter"`
 	Timeout     int                `md:"Timeout"`
+	Count       int                `md:"Count"`
+	Interval    int                `md:"Interval"`
 }
 
 type Output struct {
