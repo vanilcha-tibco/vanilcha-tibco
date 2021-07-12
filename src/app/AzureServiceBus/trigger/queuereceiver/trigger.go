@@ -438,7 +438,9 @@ func processMessage(msg *servicebus.Message, handler trigger.Handler, valueType 
 			outputRoot["messageString"] = string(text)
 
 		} else {
-			outputRoot["messageString"] = string("") //blank   //need to remove, add warining
+
+			logCache.Warnf("Azure Service bus Topic/Queue message content is nil")
+
 		}
 
 		//put check here  msg.Data != nil  "" value

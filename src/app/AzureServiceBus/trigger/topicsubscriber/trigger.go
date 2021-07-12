@@ -442,7 +442,8 @@ func processMessage(msg *servicebus.Message, handler trigger.Handler, valueType 
 			outputRoot["messageString"] = string(text)
 
 		} else {
-			outputRoot["messageString"] = string("")
+			logCache.Warnf("Azure Service bus Topic/Queue message content is nil")
+
 		}
 
 		brokerProperties["ContentType"] = msg.ContentType

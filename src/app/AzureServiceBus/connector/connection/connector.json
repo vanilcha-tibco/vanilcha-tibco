@@ -57,6 +57,7 @@
       "required": true,
       "display": {
           "name": "SharedAccessKey",  
+          "description": "Provide the Primary or Secondary Key",
           "visible": true,
           "type": "password",
           "encryptable":true,
