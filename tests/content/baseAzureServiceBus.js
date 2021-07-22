@@ -43,7 +43,7 @@ var baseAzureServiceBus = function () {
         password: process.env.Zuora_password || "$Tibco2018$",
         azureservicebusAuthRule: "golangtest",
         azureservicebusNameSpace: "tibcojetblueexp",
-        azureservicebusKey: "vhMKaTQec0YkqLG5963xz8QEezJKpQ+unBxquWG9qMY=",
+        azureservicebusKey: "VFf8Izc9RaH+q3vWk2r2QTSl2XFUNDh/1J4QJzFeCF8=",
         isProduction: "false",
         operation_Publish: "Create Subscription",
         operation_Update_Subscription: "Update Subscription",
