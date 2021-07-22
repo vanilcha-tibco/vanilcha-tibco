@@ -28,7 +28,7 @@ describe("Flogo AzureServiceBus", function () {
     });
 
     afterAll(function () {
-        baseWI.deleteAllApps();
+       baseWI.deleteAllApps();
         baseWI.deleteAllConnections();
 
     });
@@ -83,13 +83,13 @@ describe("Flogo AzureServiceBus", function () {
         var topicNameValue = "\"topicauto\"";
         var messageStringValueTopic = "\"MessageinTopic\"";
         var messageStringValueQueue = "\"MessageinQueue\"";
-        var sessionIdValueQueue = "\"sessionautoqueue\"";
-        var sessionIdValueTopic = "\"sessionautotopic\"";
+        var sessionIdValueQueue = ["\"sessionautoqueue\""];
+        var sessionIdValueTopic = ["\"sessionautotopic\""];
 
         var queueName = "queueName";
         var topicName = "topicName";
         var messageString = "messageString";
-        var sessionId = "SessionId";
+        var sessionId = ["SessionId"];
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().createAzureTopicSubscriber("AzureTopicSubscriber","AzureTopicSubscriberdescription","AzureServiceBusConnection","topicauto","subauto","sessionautotopic");
 
@@ -124,8 +124,8 @@ describe("Flogo AzureServiceBus", function () {
 
         baseWI.createRESTFlow(flowName, flowDescription, basePath[0], pathParam[0], methods, inputData);
 
-        var outputSettings = [[]];
-        var output = ["pathParam.message"];
+        var outputSettings = "";
+        var output = ["pathParams.message"];
         var replySettings = inputData;
         var reply = ["output"];
         baseWI.configureServerlessRestTrigger(outputSettings, output, replySettings, reply);
@@ -140,13 +140,13 @@ describe("Flogo AzureServiceBus", function () {
         baseAzureServiceBus.AzureServiceBusPaletteMethods().clickInputTab();
         browser.sleep(500);
 
-        baseWI.commonActivityMethods().expandSchema(3);
+        baseWI.commonActivityMethods().expandSchemaNew();
         browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(queueName, queueNameValue);
         browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueQueue);
         browser.sleep(500);
-        baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueQueue);
+        baseWI.commonActivityMethods().mapperInputNew(sessionId, sessionIdValueQueue);
         browser.sleep(500);
         baseWI.commonActivityMethods().clickCloseActivityConfiguration();
         browser.sleep(500);
@@ -159,13 +159,13 @@ describe("Flogo AzureServiceBus", function () {
         browser.sleep(500);
         baseAzureServiceBus.AzureServiceBusPaletteMethods().clickInputTab();
         browser.sleep(500);
-        baseWI.commonActivityMethods().expandSchema(3);
+        baseWI.commonActivityMethods().expandSchemaNew();
         browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(topicName, topicNameValue);
         browser.sleep(500);
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueTopic);
         browser.sleep(500);
-        baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueTopic);
+        baseWI.commonActivityMethods().mapperInputNew(sessionId, sessionIdValueTopic);
         console.log("Before click CLose Activity COnfiguration");
         browser.sleep(500);
         baseWI.commonActivityMethods().clickCloseActivityConfiguration();

@@ -21,13 +21,13 @@ describe("Flogo AzureServiceBus", function () {
     var appNames = "";
 
     beforeAll(function () {
-        baseWI.deleteAllApps();
-        baseWI.deleteAllConnections();
+       baseWI.deleteAllApps();
+       baseWI.deleteAllConnections();
 
     });
 
     afterAll(function () {
-        baseWI.deleteAllApps();
+       baseWI.deleteAllApps();
         baseWI.deleteAllConnections();
 
     });
@@ -58,7 +58,7 @@ describe("Flogo AzureServiceBus", function () {
         var flowDescription = baseWI.commonMethods().generateRandomStringOfNCharacters(20);
 
         browser.sleep(500);
-        baseAzureServiceBus.connectionModalMethods().addConnection();
+       baseAzureServiceBus.connectionModalMethods().addConnection();
         browser.sleep(1000);
 
 
@@ -68,13 +68,13 @@ describe("Flogo AzureServiceBus", function () {
         var topicNameValue = "\"topicauto\"";
         var messageStringValueTopic = "\"MessageinTopic\"";
         var messageStringValueQueue = "\"MessageinQueue\"";
-        var sessionIdValueQueue = "\"sessionautoqueue\"";
-        var sessionIdValueTopic = "\"sessionautotopic\"";
+        var sessionIdValueQueue = ["\"sessionautoqueue\""];
+        var sessionIdValueTopic = ["\"sessionautotopic\""];
 
         var queueName = "queueName";
         var topicName = "topicName";
         var messageString = "messageString";
-        var sessionId = "SessionId";
+        var sessionId = ["SessionId"];
 
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().createAzureTopicSubscriber("AzureTopicSubscriber","AzureTopicSubscriberdescription","AzureServiceBusConnection","topicauto","subauto","sessionautotopic");
@@ -113,10 +113,10 @@ describe("Flogo AzureServiceBus", function () {
 
 
         //Create Timer Flow with two publish activities
-        baseWI.createTimerFlow("PublishActivities","PublishActivities with Topic and Queue");
+       baseWI.createTimerFlow("PublishActivities","PublishActivities with Topic and Queue");
         //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.TimerTrigger);
         //baseWI.flowDesignPageMethods().addNewActivity(baseWI.commonElements().activityType.TimerTrigger);
-        baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity(baseWI.commonElements().activityType.AzureServiceBusPublish);
+       baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity(baseWI.commonElements().activityType.AzureServiceBusPublish);
         //baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(baseWI.commonElements().activityType.AzureServiceBusPublish);
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().setConnectionName("AzureServiceBusConnection");
@@ -124,12 +124,13 @@ describe("Flogo AzureServiceBus", function () {
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().clickInputTab();
 
-        baseWI.commonActivityMethods().expandSchema(3);
+        baseWI.commonActivityMethods().expandSchemaNew();
+
 
         baseWI.commonActivityMethods().mapperInput(queueName, queueNameValue);
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueQueue);
 
-        baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueQueue);
+        baseWI.commonActivityMethods().mapperInputNew(sessionId, sessionIdValueQueue);
         browser.sleep(500);
         baseWI.commonActivityMethods().clickCloseActivityConfiguration();
         browser.sleep(500);
@@ -137,21 +138,21 @@ describe("Flogo AzureServiceBus", function () {
         baseAzureServiceBus.AzureServiceBusPaletteMethods().addAzureServiceBusPublishActivity("AzureServiceBus Publish");
         //baseWI.flowDesignPageMethods().selectActivityTypeFromPallet(baseWI.commonElements().activityType.AzureServiceBusPublish);
 
-        baseAzureServiceBus.AzureServiceBusPaletteMethods().setConnectionName("AzureServiceBusConnection");
-        browser.sleep(500);
+         baseAzureServiceBus.AzureServiceBusPaletteMethods().setConnectionName("AzureServiceBusConnection");
+       // browser.sleep(500);
         baseAzureServiceBus.AzureServiceBusPaletteMethods().setEntityType("Topic");
         browser.sleep(500);
 
         baseAzureServiceBus.AzureServiceBusPaletteMethods().clickInputTab();
-        browser.sleep(500);
-        baseWI.commonActivityMethods().expandSchema(3);
-        browser.sleep(500);
+        browser.sleep(1000);
+        baseWI.commonActivityMethods().expandSchemaNew();
+        browser.sleep(1000);
         baseWI.commonActivityMethods().mapperInput(topicName, topicNameValue);
-        browser.sleep(500);
+        browser.sleep(1000);
         baseWI.commonActivityMethods().mapperInput(messageString, messageStringValueTopic);
         browser.sleep(500);
 
-        baseWI.commonActivityMethods().mapperInput(sessionId, sessionIdValueTopic);
+        baseWI.commonActivityMethods().mapperInputNew(sessionId, sessionIdValueTopic);
         console.log("Before click CLose Activity COnfiguration");
         browser.sleep(500);
         baseWI.commonActivityMethods().clickCloseActivityConfiguration();
@@ -188,8 +189,8 @@ describe("Flogo AzureServiceBus", function () {
             baseWI.checkTextInLogs(QueueSubscriberMessage);
             baseWI.checkTextInLogs(messageStringValueTopic);
             baseWI.checkTextInLogs(messageStringValueQueue);
-            baseWI.checkTextInLogs(sessionIdValueQueue);
-            baseWI.checkTextInLogs(sessionIdValueTopic);
+            baseWI.checkTextInLogs("sessionautoqueue");
+            baseWI.checkTextInLogs("sessionautotopic");
         }
         else {
             appNames = appName;
