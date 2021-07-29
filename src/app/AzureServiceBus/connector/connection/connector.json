@@ -9,7 +9,8 @@
     "category": "AzureServiceBus",
     "visible": true,
     "smallIcon": "icons/azure_service_bus.png",
-    "largeIcon": "icons/azure_service_bus.png"
+    "largeIcon": "icons/azure_service_bus.png",
+    "connectionsupport": true
   },
   "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/connector/connection",
   "keyfield": "name",

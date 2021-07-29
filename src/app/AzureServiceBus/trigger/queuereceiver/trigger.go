@@ -116,6 +116,13 @@ func (t *SBQueueReceiverTrigger) Initialize(ctx trigger.InitContext) error {
 
 	ctx.Logger().Info("Initializing AzureServiceBus Trigger Context...")
 
+	s := &Settings{}
+	err := metadata.MapToStruct(t.config.Settings, s, true)
+
+	if err != nil {
+		return fmt.Errorf("Error occured in metadata.MapToStruct, error - [%s]", err.Error())
+	}
+
 	for _, handler := range ctx.GetHandlers() {
 
 		handlerSettings := &HandlerSettings{}
@@ -124,22 +131,13 @@ func (t *SBQueueReceiverTrigger) Initialize(ctx trigger.InitContext) error {
 		if err != nil {
 			return fmt.Errorf("Error occured in metadata.MapToStruct, error - [%s]", err.Error())
 		}
-		//fmt.Println("Printingcustomlogs")
-		//str := fmt.Sprintf("%v", handler.Settings()["azservicebusConnection"])
-		//fmt.Println(str)
-		//fmt.Println("PrintingAllValuesOFinterface")
-		//b, err := json.Marshal(handler.Settings())
+
+		//handlerSettings.Connection, err = azureservicebusconnection.GetSharedConfiguration(handler.Settings()["azservicebusConnection"])
 		//if err != nil {
-		//	fmt.Errorf("ERROR")
+		//	return err
 		//}
-		//fmt.Println(string(b))
 
-		handlerSettings.Connection, err = azureservicebusconnection.GetSharedConfiguration(handler.Settings()["azservicebusConnection"])
-		if err != nil {
-			return err
-		}
-
-		asbscm, _ := handlerSettings.Connection.(*azureservicebusconnection.AzureServiceBusSharedConfigManager)
+		asbscm, _ := s.Connection.(*azureservicebusconnection.AzureServiceBusSharedConfigManager)
 
 		queueName := handlerSettings.Queue
 		receiveMode := handlerSettings.ReceiveMode

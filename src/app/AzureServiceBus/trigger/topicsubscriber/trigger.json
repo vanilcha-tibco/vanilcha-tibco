@@ -13,11 +13,10 @@
       ]
     },
     "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/trigger/topicsubscriber",
-    "handler": {
-    "settings": [  
+    "settings": [
       {
         "name": "azservicebusConnection",
-        "type": "object",
+        "type": "connection",
         "required": true,
         "display": {
           "name": "AzureServiceBus Connection",
@@ -30,7 +29,10 @@
           "step": "Choose Connection"
         },
         "allowed": []
-      },
+      }
+    ],
+    "handler": {
+    "settings": [  
       {
         "name": "topic",
         "type": "string",

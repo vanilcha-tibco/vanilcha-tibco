@@ -13,8 +13,8 @@
       ]
     },
     "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/trigger/queuereceiver",
-    "handler": {
-    "settings": [{
+    "settings": [
+      {
         "name": "azservicebusConnection",
         "type": "connection",
         "required": true,
@@ -29,7 +29,10 @@
           "step": "Choose Connection"
         },
         "allowed": []
-      },
+      }
+    ],
+    "handler": {
+    "settings": [
       {
         "name": "queue",
         "type": "string",

@@ -5,16 +5,20 @@ import (
 	"github.com/project-flogo/core/support/connection"
 )
 
+type Settings struct {
+	Connection connection.Manager `md:"azservicebusConnection,required"`
+}
+
 type HandlerSettings struct {
-	Connection       connection.Manager `md:"azservicebusConnection"`
-	Topic            string             `md:"topic"`
-	SessionId        string             `md:"sessionId"`
-	SubscriptionName string             `md:"subscriptionName"`
-	ValueType        string             `md:"valueType"`
-	DeadLetter       bool               `md:"deadletter"`
-	Timeout          int                `md:"Timeout"`
-	Count            int                `md:"Count"`
-	Interval         int                `md:"Interval"`
+	//Connection       connection.Manager `md:"azservicebusConnection"`
+	Topic            string `md:"topic"`
+	SessionId        string `md:"sessionId"`
+	SubscriptionName string `md:"subscriptionName"`
+	ValueType        string `md:"valueType"`
+	DeadLetter       bool   `md:"deadletter"`
+	Timeout          int    `md:"Timeout"`
+	Count            int    `md:"Count"`
+	Interval         int    `md:"Interval"`
 }
 
 type Output struct {
