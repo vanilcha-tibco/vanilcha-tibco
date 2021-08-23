@@ -2,6 +2,8 @@
  * Created by hkher on 10/29/17.
  */
 
+const { element } = require("protractor");
+
 /**
  * Contains all the elements used on the SugarCRM Create modal for the Web Integrator.
  */
@@ -64,6 +66,12 @@ var PaletteElements = function () {
 
     this.topicSubscriberTrigger = function (){
         return element(by.xpath("//div[contains(@class,'wi-card-title-connector') and contains(text(),'AzureServiceBus TopicSubscriber')]"));
+    }
+
+    this.deadlettersubscriptionenabled=function(){
+        //return element(by.xpath("//div[contains(@class,'radio')]//label[1]"));
+        return element(by.xpath("//div[contains(@class,'radio')]"));
+    
     }
 
     this.queueRecieverTrigger = function (){
