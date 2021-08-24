@@ -23,6 +23,7 @@ module.exports = function (grunt) {
                     configFile: "./WI/config/protractorwiConf.js",
                     args: {
                         specs: ['./connectors/azservicebus/content/tests/wi_AzureServiceBus.js','./connectors/azservicebus/content/tests/wi_AzureServiceBus_ImportExport.js']
+                        //specs: ['./connectors/azservicebus/content/tests/wi_AzureServiceBus.js']
                     }
                 }
             }

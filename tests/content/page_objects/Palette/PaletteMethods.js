@@ -2,6 +2,9 @@
  * Created by KrishnaChaitanyaGuttikonda on 10/29/17.
  */
 
+const { text } = require('cheerio/lib/api/manipulation');
+const { browser } = require('protractor');
+
 /**
  * Contains all the methods used on the AzureServiceBus modal for the Web Integrator.
  */
@@ -116,6 +119,40 @@ this.connectionSelectlistoption = function (option) {
         browser.findElement(by.xpath("//input[@id='queue']")).sendKeys(QueueName);
         //browser.findElement(by.xpath("//input[@id='subscriptionName]")).sendKeys(SubscriptionName); */
     };
+   
+    this.createAzureQueueRecieverDlq = function (flowName, flowDescription, connection, QueueName) {
+        var that = this;
+        baseWI.createFlowWindowMethods().setBasicFlowDetails(flowName, flowDescription, baseWI.commonElements().connectionType.Trigger,
+            "AzureServiceBus QueueReceiver");
+        //browser.wait(EC.presenceOf(that.createFlowWindowElements().resourcePath()), 5000,"REST trigger flow UI did not appear on UI")
+
+        baseWI.flowDesignPageMethods().clickAddTriggerButton();
+        baseWI.flowDesignPageMethods().clickSelectNewTriggerTab();
+        baseWI.createFlowWindowMethods().selectTriggerType("AzureServiceBus QueueReceiver");
+        that.selectConnectionInstance(connectionDetails.name);
+        //browser.sleep(500);
+        baseWI.createFlowWindowMethods().clickContinueButton();
+
+        baseWI.createFlowWindowMethods().clickCopySchemaButton();
+        baseWI.flowDesignPageMethods().clickFlowInputAndOutputBar();
+        browser.sleep(500);
+        browser.findElement(by.xpath("//a[contains(@class,'triggers-list-element')]")).click();
+        //browser.sleep(500);
+        browser.findElement(by.xpath("//input[@id='queue']")).sendKeys(QueueName);
+        //browser.sleep(500);
+        // browser.driver.findElement(by.xpath("//div[contains(@class,'radio')]//label[1]")).click();
+        utilities.clickElement(PaletteElements.deadlettersubscriptionenabled(), "AzureServiceBus Queue Receiver deadletter enabled");
+        //browser.findElement(by.xpath("//input[@id='sessionId']")).sendKeys(sessionId);
+        //browser.sleep(500);
+        browser.findElement(by.xpath("//div[contains(text(),'Map to Flow Inputs')]")).click();
+
+        that.configureTrigger_Output("output");
+        browser.sleep(500);
+        baseWI.flowDesignPageMethods().clickCloseServerlessTriggerConfig();
+        //browser.sleep(500);
+
+        
+    };
 
 
 
@@ -141,6 +178,40 @@ this.connectionSelectlistoption = function (option) {
         browser.findElement(by.xpath("//input[@id='subscriptionName']")).sendKeys(SubscriptionName);
         //browser.sleep(500);
         browser.findElement(by.xpath("//input[@id='sessionId']")).sendKeys(sessionId);
+        //browser.sleep(500);
+        browser.findElement(by.xpath("//div[contains(text(),'Map to Flow Inputs')]")).click();
+
+        that.configureTrigger_Output("output");
+        //browser.sleep(500);
+        baseWI.flowDesignPageMethods().clickCloseServerlessTriggerConfig();
+        //browser.sleep(500);
+    };
+
+    this.createAzureTopicSubscriberDlq = function (flowName, flowDescription, connection, TopicName, SubscriptionName) {
+        var that = this;
+
+        baseWI.createFlowWindowMethods().setBasicFlowDetails(flowName, flowDescription, baseWI.commonElements().connectionType.Trigger, "AzureServiceBus TopicSubscriber");
+        //browser.sleep(500);
+        baseWI.flowDesignPageMethods().clickAddTriggerButton();
+        baseWI.createFlowWindowMethods().selectTriggerType("AzureServiceBus TopicSubscriber");
+        that.selectConnectionInstance(connectionDetails.name);
+        //browser.sleep(500);
+        baseWI.createFlowWindowMethods().clickContinueButton();
+        //browser.sleep(500);
+        baseWI.createFlowWindowMethods().clickCopySchemaButton();
+        baseWI.flowDesignPageMethods().clickFlowInputAndOutputBar();
+        //browser.sleep(500);
+        browser.findElement(by.xpath("//a[contains(@class,'triggers-list-element')]")).click();
+       // browser.findElement(by.xpath(text,))
+       
+//browser.sleep(1000);
+        browser.findElement(by.xpath("//input[@id='topic']")).sendKeys(TopicName);
+        //browser.sleep(500);
+        //browser.driver.findElement(by.xpath("//div[contains(@class,'radio')]//label[1]")).click();
+        utilities.clickElement(PaletteElements.deadlettersubscriptionenabled(), "AzureServiceBus Topic Subscriber deadletter enabled");
+        browser.findElement(by.xpath("//input[@id='subscriptionName']")).sendKeys(SubscriptionName);
+        //browser.sleep(500);
+       // browser.findElement(by.xpath("//input[@id='sessionId']")).sendKeys(sessionId);
         //browser.sleep(500);
         browser.findElement(by.xpath("//div[contains(text(),'Map to Flow Inputs')]")).click();
 
