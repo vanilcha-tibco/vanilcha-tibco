@@ -28,7 +28,8 @@ export namespace JsonSchema {
                         "TimeToLive": { "type" : "integer"},
                         "To": {"type" : "string"}
                     }
-                  }
+                  },
+                  "customProperties": {"type": "object"}
                 }
             }
         },
@@ -55,7 +56,8 @@ export namespace JsonSchema {
                         "TimeToLive": { "type" : "integer"},
                         "To": {"type" : "string"}
                     }
-                  }
+                  },
+                  "customProperties": {"type": "object"}
                 }
             }
         },
@@ -81,10 +83,12 @@ export namespace JsonSchema {
                       "ReplyTo": {"type" : "string"},
                       "SessionId": {"type" : "string"},
                       "TimeToLive": { "type" : "integer", "minimum": 0},
+                      "ScheduledEnqueueTimeUtc": { "type" : "string"},
                       "To": {"type" : "string"}
-                  }
-                }
-              },
+                    }
+                  },
+                  "customProperties": {"type": "object"}
+                },
                 "required": [
                   "queueName",
                   "messageString"
@@ -125,9 +129,12 @@ export namespace JsonSchema {
                       "ReplyTo": {"type" : "string"},
                       "SessionId": {"type" : "string"},
                       "TimeToLive": { "type" : "integer", "minimum": 0},
+                      "ScheduledEnqueueTimeUtc": { "type" : "string"},
                       "To": {"type" : "string"}
-                  }  }
-              },
+                    }
+                  },
+                  "customProperties": {"type": "object"}
+                },
                 "required": [
                   "topicName",
                   "messageString"

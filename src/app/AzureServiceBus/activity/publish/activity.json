@@ -1,7 +1,7 @@
 {
   "title": "AzureServiceBus Publish",
   "name": "azservicebus-publish",
-  "version": "1.0",
+  "version": "1.2.0",
   "author": "TIBCO Software Inc.",
   "type": "flogo:activity",
   "display": {
@@ -56,6 +56,21 @@
         "name": "Entity Name",
         "description": "AzureServiceBus entity name to publish message",       
         "visible": false
+      }
+    },
+    {
+      "name": "customProperties",
+      "type": "params",
+      "required": false,
+      "display": {
+        "name": "Custom Properties",
+        "description": "Custom properties for each message.",
+        "type": "params",
+        "mappable": false,
+        "enableClear": true,
+        "inputSettingsOnly": true,
+        "additionalProperties": true,
+        "schema": "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"parameterName\":{\"type\":\"string\"},\"type\":{\"type\":{\"enum\":[\"integer\",\"string\",\"number\",\"boolean\",\"date\"]}},\"required\":{\"type\":{\"enum\":[\"true\",\"false\"]}}}}}"
       }
     },
     {

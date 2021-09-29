@@ -464,14 +464,13 @@ func processMessage(msg *servicebus.Message, handler trigger.Handler, valueType 
 		//outputRoot["brokerProperties"] = complexBrokerProperties.Value
 
 		outputRoot["brokerProperties"] = brokerProperties
-
-		//outputComplex := &data.ComplexObject{Metadata: "", Value: outputRoot}
-		//outputData["output"] = outputComplex
+		//pickng up user properties
+		outputRoot["customProperties"] = msg.UserProperties
+		//logCache.Info("custom obj %#v", outputRoot["customProperties"])
 
 		outputData["output"] = outputRoot
 
 		output.Output = outputData
-		logCache.Debugf("Activity successfully executed") //changes logs
 	} else if deserVal == "JSON" {
 		// future use
 	}

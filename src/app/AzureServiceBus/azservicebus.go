@@ -28,16 +28,17 @@ type (
 type (
 	//BrokerProperties datastructure for storing BrokerProperties
 	BrokerProperties struct {
-		ContentType      string         `json:"ContentType"`
-		CorrelationId    string         `json:"CorrelationId"`
-		ForcePersistence bool           `json:"ForcePersistence"`
-		Label            string         `json:"Label"`
-		PartitionKey     string         `json:"PartitionKey"`
-		ReplyTo          string         `json:"ReplyTo"`
-		ReplyToSessionId string         `json:"ReplyToSessionId"`
-		SessionId        string         `json:"SessionId"`
-		To               string         `json:"To"`
-		TimeToLive       *time.Duration `json:"TimeToLive"`
+		ContentType             string         `json:"ContentType"`
+		CorrelationId           string         `json:"CorrelationId"`
+		ForcePersistence        bool           `json:"ForcePersistence"`
+		Label                   string         `json:"Label"`
+		PartitionKey            string         `json:"PartitionKey"`
+		ReplyTo                 string         `json:"ReplyTo"`
+		ReplyToSessionId        string         `json:"ReplyToSessionId"`
+		SessionId               string         `json:"SessionId"`
+		To                      string         `json:"To"`
+		TimeToLive              *time.Duration `json:"TimeToLive"`
+		ScheduledEnqueueTimeUtc *time.Time     `json:"ScheduledEnqueueTimeUtc"`
 	}
 )
 
@@ -63,7 +64,7 @@ func doCall(connection *azureservicebusconnection.AzureServiceBusSharedConfigMan
 	}
 	inputparamtersmap := make(map[string]interface{})
 	for k, v := range inputMap["parameters"].(map[string]interface{}) {
-		inputparamtersmap[k] = fmt.Sprint(v)
+		inputparamtersmap[k] = v
 	}
 
 	//	log.Info("before creating the request")
@@ -120,6 +121,18 @@ func doCall(connection *azureservicebusconnection.AzureServiceBusSharedConfigMan
 		reqmessage.SessionID = &publishInput.BrokerProperties.SessionId
 		//	fmt.Println("sessionid ", publishInput.BrokerProperties.SessionId)
 	}
+	if publishInput.BrokerProperties.ScheduledEnqueueTimeUtc != nil {
+		reqmessage.ScheduleAt(*publishInput.BrokerProperties.ScheduledEnqueueTimeUtc)
+	}
+
+	//reading custom properties from input parameters
+	if inputparamtersmap["customProperties"] != nil {
+		customProperties := make(map[string]interface{})
+		customProperties = inputparamtersmap["customProperties"].(map[string]interface{})
+		reqmessage.UserProperties = customProperties
+		//azureServiceBusActivityLogger.Info(fmt.Printf("input map custom properties %#v \n", customProperties))
+	}
+
 	if objectType == "Queue" {
 		if inputparamtersmap["queueName"] != nil && inputparamtersmap["queueName"].(string) != "" {
 			// queryURL = connection.baseURL + "/" + inputparamtersmap["queueName"].(string) + "/messages"

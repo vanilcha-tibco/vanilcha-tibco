@@ -9,7 +9,7 @@
       "smallIcon": "icons/azservicebus_topicsubscriber.png",
       "largeIcon": "icons/azservicebus_topicsubscriber@2x.png",
       "wizard": [
-        "Choose Connection"
+        "Configuration"
       ]
     },
     "ref": "git.tibco.com/git/product/ipaas/wi-azservicebus.git/src/app/AzureServiceBus/trigger/topicsubscriber",
@@ -26,7 +26,7 @@
         "wizard": {
           "type": "dropdown",
           "selection": "single",
-          "step": "Choose Connection"
+          "step": "Configuration"
         },
         "allowed": []
       }
@@ -89,7 +89,7 @@
         "type": "integer",
         "display": {
           "description": "The maximum number of times to retry Trigger",
-          "name": "Count",
+          "name": "Retry Count",
           "appPropertySupport": true
         },
         "value": 0
@@ -99,7 +99,7 @@
         "type": "integer",
         "display": {
           "description": "The time interval (in ms) between each retry attempt",
-          "name": "Interval",
+          "name": "Retry Interval",
           "appPropertySupport": true
         },
         "value": 0
@@ -121,10 +121,27 @@
       }
     ]
   },
-    "outputs": [{
-      "name": "output",
-      "type": "object"
-    }],
+  "outputs": [
+    {
+      "name": "customProperties",
+      "type": "params",
+      "required": false,
+      "display": {
+        "name": "Custom Properties",
+        "description": "Custom properties for each message.",
+        "type": "params",
+        "mappable": false,
+        "enableClear": true,
+        "outputSettingsOnly": true,
+        "additionalProperties": true,
+        "schema": "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"parameterName\":{\"type\":\"string\"},\"type\":{\"type\":{\"enum\":[\"integer\",\"string\",\"number\",\"boolean\",\"date\"]}},\"required\":{\"type\":{\"enum\":[\"true\",\"false\"]}}}}}"
+      }
+    },
+    {
+    "name": "output",
+    "type": "object"
+    }
+  ],
     "actions": [
       {
         "name": "Finish"

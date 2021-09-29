@@ -15,6 +15,7 @@ export namespace JsonSchema {
                                 "ContentType": { "type" : "string"},
                                 "CorrelationId": {"type" : "string"},
                                 "EnqueuedSequenceNumber": { "type" : "long"},
+                                "ScheduledEnqueueTimeUtc": { "type" : "string"},
                                 "ForcePersistence": {"type": "bool"},
                                 "Label": {"type" : "string"},
                                 "MessageId": {"type" : "string"},
@@ -24,7 +25,9 @@ export namespace JsonSchema {
                                 "SessionId": {"type" : "string"},
                                 "To": {"type" : "string"},
                                 "ViaPartitionKey": {"type" : "string"}
-                            }  }
+                                }
+                            },
+                            "customProperties": {"type": "object"}
                         },
                         "required": [
                             "queueName",
@@ -42,6 +45,7 @@ export namespace JsonSchema {
                                 "ContentType": { "type" : "string"},
                                 "CorrelationId": {"type" : "string"},
                                 "EnqueuedSequenceNumber": { "type" : "long"},
+                                "ScheduledEnqueueTimeUtc": { "type" : "string"},
                                 "ForcePersistence": {"type": "bool"},
                                 "Label": {"type" : "string"},
                                 "MessageId": {"type" : "string"},
@@ -51,7 +55,9 @@ export namespace JsonSchema {
                                 "SessionId": {"type" : "string"},
                                 "To": {"type" : "string"},
                                 "ViaPartitionKey": {"type" : "string"}
-                            } }
+                                }
+                            },
+                            "customProperties": {"type": "object"}
                         },
                         "required": [
                             "topicName",
